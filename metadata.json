@@ -1,0 +1,6 @@
+{
+  "name": "Unified WebDAV Explorer",
+  "description": "Material Design 3 desktop file browser merging multiple WebDAV endpoints into a unified directory structure with duplicate detection, multi-tab navigation, and sortable grid views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
