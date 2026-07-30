@@ -115,11 +115,12 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const handleExecuteShell = async (action: 'download' | 'watch') => {
     if (!file) return;
 
+    const fileUrl = `${window.location.origin}/api/webdav/file?path=${encodeURIComponent(file.path)}`;
     const previewUrl = `${window.location.origin}/api/webdav/preview?path=${encodeURIComponent(file.path)}`;
     let command = '';
 
     if (action === 'download') {
-      command = `curl -s -L -o "$HOME/Downloads/${file.name}" "${previewUrl}"`;
+      command = `curl -s -L -o "$HOME/Downloads/${file.name}" "${fileUrl}"`;
     } else if (action === 'watch') {
       command = `vlc "${previewUrl}" --title "${file.name}"`;
     }

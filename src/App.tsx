@@ -465,7 +465,7 @@ export default function App() {
   };
 
   const handleDownloadFile = (file: WebDavFile) => {
-    window.open(`/api/webdav/preview?path=${encodeURIComponent(file.path)}`, '_blank');
+    window.open(`/api/webdav/file?path=${encodeURIComponent(file.path)}`, '_blank');
   };
 
   const handleResetDemoData = () => {

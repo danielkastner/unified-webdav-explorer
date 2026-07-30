@@ -221,6 +221,43 @@ export async function fetchTmdbMetadata(filePath: string, filename: string, forc
   return null;
 }
 
+// Helper to detect if a file is a companion JSON sidecar file for a video/movie
+const VIDEO_EXTENSIONS = new Set([
+  'mp4', 'mkv', 'webm', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ts', 'vob', 'ogv'
+]);
+
+export function isCompanionJsonFile(raw: any, allRawFiles: any[]): boolean {
+  if (!raw || raw.isDirectory) return false;
+
+  const name = raw.name || '';
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (ext !== 'json') return false;
+
+  const rawPath = (raw.path || '').toLowerCase();
+  const rawParent = getParentPath(raw.path || '').toLowerCase();
+  const jsonStem = name.replace(/\.json$/i, '').toLowerCase();
+
+  // 1. Is it explicitly referenced as tmdbJsonPath by any media file?
+  const isReferencedByMedia = allRawFiles.some(
+    (f) => f && f.tmdbJsonPath && f.tmdbJsonPath.toLowerCase() === rawPath
+  );
+  if (isReferencedByMedia) return true;
+
+  // 2. Does there exist a video file in the same directory with matching stem?
+  const hasMatchingVideo = allRawFiles.some((f) => {
+    if (!f || f.isDirectory) return false;
+    const fExt = (f.name || '').split('.').pop()?.toLowerCase() || '';
+    if (!VIDEO_EXTENSIONS.has(fExt)) return false;
+
+    const fParent = getParentPath(f.path || '').toLowerCase();
+    const fStem = (f.name || '').substring(0, f.name.lastIndexOf('.')).toLowerCase();
+
+    return fParent === rawParent && fStem === jsonStem;
+  });
+
+  return hasMatchingVideo;
+}
+
 // Unification Engine: Merges multiple endpoint files into a single unified virtual directory structure
 export function unifyEndpointFiles(
   rawFiles: any[],
@@ -230,10 +267,38 @@ export function unifyEndpointFiles(
   const activeEndpointMap = new Map<string, WebDavEndpoint>();
   endpoints.filter((ep) => ep.enabled).forEach((ep) => activeEndpointMap.set(ep.id, ep));
 
+  // Pre-pass: Attach metadata from companion JSON files onto their corresponding video files if present
+  rawFiles.forEach((raw) => {
+    if (isCompanionJsonFile(raw, rawFiles)) {
+      const rawParent = getParentPath(raw.path || '').toLowerCase();
+      const jsonStem = (raw.name || '').replace(/\.json$/i, '').toLowerCase();
+
+      // Find target video file
+      const videoMatch = rawFiles.find((f) => {
+        if (!f || f.isDirectory) return false;
+        const fExt = (f.name || '').split('.').pop()?.toLowerCase() || '';
+        if (!VIDEO_EXTENSIONS.has(fExt)) return false;
+        const fParent = getParentPath(f.path || '').toLowerCase();
+        const fStem = (f.name || '').substring(0, f.name.lastIndexOf('.')).toLowerCase();
+        return fParent === rawParent && fStem === jsonStem;
+      });
+
+      if (videoMatch) {
+        if (!videoMatch.tmdbJsonPath) videoMatch.tmdbJsonPath = raw.path;
+        if (!videoMatch.tmdbData && raw.tmdbData) videoMatch.tmdbData = raw.tmdbData;
+      }
+    }
+  });
+
   // Map to collect items by path key (e.g., "/Documents/Report.pdf")
   const unifiedMap = new Map<string, WebDavFile>();
 
   rawFiles.forEach((raw) => {
+    // Skip companion JSON sidecar files so they are not shown in directory listings
+    if (isCompanionJsonFile(raw, rawFiles)) {
+      return;
+    }
+
     const rawEpList: string[] = Array.isArray(raw.endpoints)
       ? raw.endpoints
       : raw.endpointId

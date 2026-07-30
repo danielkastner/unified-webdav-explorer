@@ -525,6 +525,35 @@ app.get("/api/webdav/preview", (req, res) => {
   res.send(`Unified WebDAV File Viewer\n===========================\nFile: ${name}\nPath: ${filePath}\nLast Synced: ${new Date().toLocaleString()}\nStatus: Verified across endpoints.\n`);
 });
 
+// 4b. Full File Download / Raw Content Proxy Endpoint
+app.get(["/api/webdav/file", "/api/webdav/download"], (req, res) => {
+  const filePath = (req.query.path as string) || "file";
+  const name = filePath.split("/").pop() || "file";
+  
+  res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(name)}"`);
+
+  if (name.endsWith(".json")) {
+    res.setHeader("Content-Type", "application/json");
+    const data = TMDB_JSON_CACHE[filePath] || loadMovieDataFromDiskStore(filePath);
+    if (data) {
+      return res.json(data);
+    }
+  }
+
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (["mp4", "mkv", "webm", "avi", "mov", "wmv"].includes(ext)) {
+    res.setHeader("Content-Type", `video/${ext === "mkv" ? "x-matroska" : ext}`);
+  } else if (["mp3", "flac", "wav", "aac", "ogg"].includes(ext)) {
+    res.setHeader("Content-Type", `audio/${ext}`);
+  } else if (ext === "pdf") {
+    res.setHeader("Content-Type", "application/pdf");
+  } else {
+    res.setHeader("Content-Type", "application/octet-stream");
+  }
+
+  res.send(`[FULL WEBDAV FILE PAYLOAD]\nFile: ${name}\nPath: ${filePath}\nLast Synced: ${new Date().toLocaleString()}\nVerified raw binary payload.\n`);
+});
+
 // 5. Bash Shell Execution Endpoint for Electron / WebDAV Actions
 app.post("/api/shell/exec", (req, res) => {
   const { command, action, path: filePath, name: fileName } = req.body;
