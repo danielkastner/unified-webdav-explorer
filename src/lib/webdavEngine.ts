@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   mockServerEnabled: true,
   compactMode: false,
   downloadCommand: 'curl -s -L -o "{LOCAL_PATH}" "{URL}"',
+  watchCommand: 'vlc "{URL}" --title "{FILENAME}"',
   movieDirectories: ['/Movies'],
   tvShowDirectories: ['/TV-Shows'],
 };

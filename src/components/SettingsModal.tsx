@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Settings, Sliders, Moon, Sun, Monitor, Zap, Shield, Database, Terminal, Download, Film, Tv, FolderPlus } from 'lucide-react';
+import { X, Settings, Sliders, Moon, Sun, Monitor, Zap, Shield, Database, Terminal, Download, Play, Film, Tv, FolderPlus } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface SettingsModalProps {
@@ -211,6 +211,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
                 >
                   aria2c
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Configurable Watch Movie Command */}
+          <div className="space-y-2 pt-2 border-t border-[#D8D2C9] dark:border-[#49454F]">
+            <div className="flex items-center space-x-2">
+              <Play className="w-4 h-4 text-[#C85A17] dark:text-[#D0BCFF]" />
+              <label className="font-bold text-[#2C221E] dark:text-[#E6E1E5]">
+                Watch Movie Shell Command Template
+              </label>
+            </div>
+            <p className="text-[11px] text-[#786C63] dark:text-[#CAC4D0] leading-relaxed">
+              Configurable bash command executed for movie playback in Electron Bash Shell Actions.
+              Use <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px]">{`{URL}`}</code> for the preview endpoint URL and <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px]">{`{FILENAME}`}</code> for the file name.
+            </p>
+
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={form.watchCommand ?? 'vlc "{URL}" --title "{FILENAME}"'}
+                onChange={(e) => setForm({ ...form, watchCommand: e.target.value })}
+                placeholder='vlc "{URL}" --title "{FILENAME}"'
+                className="w-full px-3 py-2 rounded-xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+              />
+
+              <div className="flex items-center space-x-1.5 flex-wrap pt-1">
+                <span className="text-[10px] font-medium text-[#786C63] dark:text-[#938F99]">Presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, watchCommand: 'vlc "{URL}" --title "{FILENAME}"' })}
+                  className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                >
+                  vlc
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, watchCommand: 'mpv "{URL}" --title "{FILENAME}"' })}
+                  className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                >
+                  mpv
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, watchCommand: 'xdg-open "{URL}"' })}
+                  className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                >
+                  xdg-open
                 </button>
               </div>
             </div>

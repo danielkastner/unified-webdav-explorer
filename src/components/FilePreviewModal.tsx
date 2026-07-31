@@ -176,9 +176,35 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       return;
     }
 
+    // For watch action, copy command to clipboard instead of executing
     const previewUrl = `${window.location.origin}/api/webdav/preview?path=${encodeURIComponent(file.path)}`;
-    const command = `vlc "${previewUrl}" --title "${file.name}"`;
-    await dispatchShellCommand(command, 'watch');
+    const fileName = file.name;
+    const watchCommandTemplate = settings?.watchCommand ?? 'vlc "{URL}" --title "{FILENAME}"';
+    const command = formatWatchCommand(watchCommandTemplate, firstEndpointUrl, fileName);
+    navigator.clipboard.writeText(command);
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
+  };
+
+  // Format watch command with {URL} and {FILENAME} placeholders
+  const formatWatchCommand = (template: string, url: string, filename: string): string => {
+    let result = template;
+
+    if (result.includes('{URL}')) {
+      result = result.replace(/\{URL\}/g, url);
+    } else if (result.includes('$URL')) {
+      result = result.replace(/\$URL/g, url);
+    }
+
+    if (result.includes('{FILENAME}')) {
+      result = result.replace(/\{FILENAME\}/g, filename);
+    } else if (result.includes('$FILENAME')) {
+      result = result.replace(/\$FILENAME/g, filename);
+    } else if (result.includes('{FILE}')) {
+      result = result.replace(/\{FILE\}/g, filename);
+    }
+
+    return result;
   };
 
   const dispatchShellCommand = async (command: string, action: 'download' | 'watch') => {
@@ -456,7 +482,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               <div className="flex items-center space-x-2">
                 <Terminal className="w-4 h-4 text-[#C85A17] dark:text-[#D0BCFF]" />
                 <h4 className="font-bold text-xs text-[#2C221E] dark:text-[#E6E1E5]">
-                  Electron Bash Shell Actions
+                  Shell Command Actions
                 </h4>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#D8D2C9] dark:bg-[#3B383E] text-[#786C63] dark:text-[#CAC4D0]">
@@ -513,7 +539,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 <span className="font-semibold text-xs pt-1">Watch Movie</span>
                 <span className="text-[10px]">
                   {isMovie
-                    ? 'Launches video stream in Bash player'
+                    ? 'Copies command to clipboard for playback'
                     : 'Disabled (Movie files only)'}
                 </span>
               </button>
