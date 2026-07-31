@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Settings, Sliders, Moon, Sun, Monitor, Zap, Shield, Database } from 'lucide-react';
+import { X, Settings, Sliders, Moon, Sun, Monitor, Zap, Shield, Database, Terminal, Download } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface SettingsModalProps {
@@ -115,6 +115,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <p className="text-[11px] text-[#786C63] dark:text-[#CAC4D0]">Files with the same name across any endpoint folder are flagged as duplicate candidates.</p>
                 </div>
               </label>
+            </div>
+          </div>
+
+          {/* Configurable Download Command */}
+          <div className="space-y-2 pt-2 border-t border-[#D8D2C9] dark:border-[#49454F]">
+            <div className="flex items-center space-x-2">
+              <Terminal className="w-4 h-4 text-[#C85A17] dark:text-[#D0BCFF]" />
+              <label className="font-bold text-[#2C221E] dark:text-[#E6E1E5]">
+                Download Shell Command Template
+              </label>
+            </div>
+            <p className="text-[11px] text-[#786C63] dark:text-[#CAC4D0] leading-relaxed">
+              Configurable bash command executed for file downloads in Electron Bash Shell Actions.
+              Use <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px]">{`{LOCAL_PATH}`}</code> for the chosen local path and <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px]">{`{URL}`}</code> for the endpoint file URL.
+            </p>
+
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={form.downloadCommand ?? 'curl -s -L -o "{LOCAL_PATH}" "{URL}"'}
+                onChange={(e) => setForm({ ...form, downloadCommand: e.target.value })}
+                placeholder='curl -s -L -o "{LOCAL_PATH}" "{URL}"'
+                className="w-full px-3 py-2 rounded-xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+              />
+
+              <div className="flex items-center space-x-1.5 flex-wrap pt-1">
+                <span className="text-[10px] font-medium text-[#786C63] dark:text-[#938F99]">Presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, downloadCommand: 'curl -s -L -o "{LOCAL_PATH}" "{URL}"' })}
+                  className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                >
+                  curl
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, downloadCommand: 'wget -O "{LOCAL_PATH}" "{URL}"' })}
+                  className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                >
+                  wget
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, downloadCommand: 'aria2c -o "{LOCAL_PATH}" "{URL}"' })}
+                  className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                >
+                  aria2c
+                </button>
+              </div>
             </div>
           </div>
 

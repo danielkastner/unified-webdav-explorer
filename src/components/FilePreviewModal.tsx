@@ -20,13 +20,24 @@ import {
   Calendar,
   Clock,
   Tag,
+  FolderOpen,
+  HardDrive,
 } from 'lucide-react';
-import { WebDavFile, TMDBMovieData, WebDavEndpoint, EndpointFileInfo } from '../types';
-import { formatBytes, formatDate, formatMediaInfo, isMovieFile, fetchTmdbMetadata, getEndpointFileFullUrl } from '../lib/webdavEngine';
+import { WebDavFile, TMDBMovieData, WebDavEndpoint, EndpointFileInfo, AppSettings } from '../types';
+import {
+  formatBytes,
+  formatDate,
+  formatMediaInfo,
+  isMovieFile,
+  fetchTmdbMetadata,
+  getEndpointFileFullUrl,
+  formatDownloadCommand,
+} from '../lib/webdavEngine';
 
 interface FilePreviewModalProps {
   file: WebDavFile | null;
   endpoints?: WebDavEndpoint[];
+  settings?: AppSettings;
   onClose: () => void;
   onDownload: (file: WebDavFile) => void;
   onCopyEndpointUrl?: (epInfo: EndpointFileInfo, file: WebDavFile) => void;
@@ -35,6 +46,7 @@ interface FilePreviewModalProps {
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   file,
   endpoints = [],
+  settings,
   onClose,
   onDownload,
   onCopyEndpointUrl,
@@ -48,6 +60,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [tmdbData, setTmdbData] = useState<TMDBMovieData | null>(file?.tmdbData || null);
   const [tmdbJsonPath, setTmdbJsonPath] = useState<string | null>(file?.tmdbJsonPath || null);
   const [jsonRawContent, setJsonRawContent] = useState<string | null>(null);
+
+  // File Chooser Dialog Modal State for Downloads
+  const [isSavePathModalOpen, setIsSavePathModalOpen] = useState(false);
+  const [targetSavePath, setTargetSavePath] = useState('');
 
   const [shellLog, setShellLog] = useState<{
     command: string;
@@ -117,18 +133,50 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     setTimeout(() => setCopiedCmd(false), 2000);
   };
 
+  const firstEndpointInfo = file?.endpoints && file.endpoints.length > 0 ? file.endpoints[0] : null;
+  const firstEndpointUrl = firstEndpointInfo
+    ? getEndpointFileFullUrl(firstEndpointInfo, endpoints)
+    : `${window.location.origin}/api/webdav/file?path=${encodeURIComponent(file?.path || '')}`;
+
+  const handleOpenDownloadChooser = () => {
+    if (!file) return;
+    setTargetSavePath(`~/Downloads/${file.name}`);
+    setIsSavePathModalOpen(true);
+  };
+
+  const handleNativeBrowseDirectory = async () => {
+    if (window.electronAPI?.selectDirectory && file) {
+      const dir = await window.electronAPI.selectDirectory();
+      if (dir) {
+        const cleanDir = dir.endsWith('/') || dir.endsWith('\\') ? dir : `${dir}/`;
+        setTargetSavePath(`${cleanDir}${file.name}`);
+      }
+    }
+  };
+
+  const handleConfirmDownloadWithChooser = async () => {
+    if (!file) return;
+    const savePath = targetSavePath.trim() || `~/Downloads/${file.name}`;
+    const command = formatDownloadCommand(settings?.downloadCommand, savePath, firstEndpointUrl);
+    setIsSavePathModalOpen(false);
+    await dispatchShellCommand(command, 'download');
+  };
+
   const handleExecuteShell = async (action: 'download' | 'watch') => {
     if (!file) return;
 
-    const fileUrl = `${window.location.origin}/api/webdav/file?path=${encodeURIComponent(file.path)}`;
-    const previewUrl = `${window.location.origin}/api/webdav/preview?path=${encodeURIComponent(file.path)}`;
-    let command = '';
-
     if (action === 'download') {
-      command = `curl -s -L -o "$HOME/Downloads/${file.name}" "${fileUrl}"`;
-    } else if (action === 'watch') {
-      command = `vlc "${previewUrl}" --title "${file.name}"`;
+      handleOpenDownloadChooser();
+      return;
     }
+
+    const previewUrl = `${window.location.origin}/api/webdav/preview?path=${encodeURIComponent(file.path)}`;
+    const command = `vlc "${previewUrl}" --title "${file.name}"`;
+    await dispatchShellCommand(command, 'watch');
+  };
+
+  const dispatchShellCommand = async (command: string, action: 'download' | 'watch') => {
+    if (!file) return;
 
     setIsExecuting(true);
     try {
@@ -421,11 +469,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   <div className="p-1.5 rounded-xl bg-[#E7E2DB] dark:bg-[#381E72] text-[#C85A17] dark:text-[#D0BCFF] group-hover:scale-105 transition-transform">
                     <Download className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-mono text-[#786C63] dark:text-[#CAC4D0]">curl</span>
+                  <span className="text-[10px] font-mono text-[#786C63] dark:text-[#CAC4D0]">
+                    {settings?.downloadCommand ? settings.downloadCommand.split(' ')[0] : 'curl'}
+                  </span>
                 </div>
                 <span className="font-semibold text-xs pt-1">Download File</span>
                 <span className="text-[10px] text-[#786C63] dark:text-[#CAC4D0]">
-                  Runs curl in Bash to ~/Downloads
+                  Prompts file chooser & executes custom shell cmd
                 </span>
               </button>
 
@@ -605,6 +655,145 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Native File Chooser Dialog Modal */}
+      {isSavePathModalOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[#FAF8F5] dark:bg-[#2B2930] border border-[#D8D2C9] dark:border-[#49454F] rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col select-none text-[#2C221E] dark:text-[#E6E1E5]">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-[#D8D2C9] dark:border-[#49454F] flex items-center justify-between bg-[#F0EEEB] dark:bg-[#1C1B1F]">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-2xl bg-[#E7E2DB] dark:bg-[#381E72] text-[#C85A17] dark:text-[#D0BCFF]">
+                  <FolderOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#2C221E] dark:text-[#E6E1E5]">
+                    Select Save Path (Native File Chooser)
+                  </h3>
+                  <p className="text-[11px] text-[#786C63] dark:text-[#CAC4D0]">
+                    Choose local destination for downloading {file.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSavePathModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-[#DFD9CE] dark:hover:bg-[#49454F] text-[#786C63] dark:text-[#CAC4D0] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              {/* First Endpoint Information Banner */}
+              <div className="p-3 rounded-2xl bg-[#F0EEEB] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-[#786C63] dark:text-[#CAC4D0]">
+                    First WebDAV Endpoint Source:
+                  </span>
+                  {firstEndpointInfo ? (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-2xs"
+                      style={{ backgroundColor: firstEndpointInfo.endpointColor || '#3b82f6' }}
+                    >
+                      {firstEndpointInfo.endpointName}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-slate-500">
+                      Default API Endpoint
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] font-mono truncate text-[#C85A17] dark:text-[#D0BCFF] bg-black/5 dark:bg-black/30 p-1.5 rounded-lg border border-black/10 dark:border-white/10">
+                  {firstEndpointUrl}
+                </div>
+              </div>
+
+              {/* Target Path Input */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-[#2C221E] dark:text-[#E6E1E5]">
+                    Local Target Destination Path:
+                  </label>
+                  {window.electronAPI?.selectDirectory && (
+                    <button
+                      type="button"
+                      onClick={handleNativeBrowseDirectory}
+                      className="text-[10px] font-semibold text-[#C85A17] dark:text-[#D0BCFF] hover:underline flex items-center space-x-1 cursor-pointer"
+                    >
+                      <HardDrive className="w-3 h-3" />
+                      <span>Browse OS Folders</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={targetSavePath}
+                    onChange={(e) => setTargetSavePath(e.target.value)}
+                    placeholder={`~/Downloads/${file.name}`}
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+                  />
+                </div>
+
+                {/* Path Location Preset Chips */}
+                <div className="flex items-center space-x-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] text-[#786C63] dark:text-[#938F99]">Presets:</span>
+                  {[
+                    `~/Downloads/${file.name}`,
+                    `~/Desktop/${file.name}`,
+                    `/tmp/${file.name}`,
+                    `C:\\Downloads\\${file.name}`,
+                  ].map((pathPreset) => (
+                    <button
+                      key={pathPreset}
+                      type="button"
+                      onClick={() => setTargetSavePath(pathPreset)}
+                      className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer truncate max-w-[150px]"
+                    >
+                      {pathPreset.split('/')[0] || pathPreset.split('\\')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dynamic Command Live Preview */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-[#786C63] dark:text-[#CAC4D0] block">
+                  Generated Shell Command Preview:
+                </label>
+                <div className="p-3 rounded-xl bg-[#121115] border border-[#36343B] text-amber-300 font-mono text-[11px] break-all select-text shadow-inner">
+                  <span className="text-emerald-400 font-bold">$ </span>
+                  {formatDownloadCommand(
+                    settings?.downloadCommand,
+                    targetSavePath || `~/Downloads/${file.name}`,
+                    firstEndpointUrl
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-[#D8D2C9] dark:border-[#49454F] flex justify-end space-x-2 bg-[#F0EEEB] dark:bg-[#1C1B1F]">
+              <button
+                type="button"
+                onClick={() => setIsSavePathModalOpen(false)}
+                className="px-4 py-2 rounded-full text-[#786C63] dark:text-[#CAC4D0] hover:bg-[#DFD9CE] dark:hover:bg-[#49454F] font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDownloadWithChooser}
+                className="px-5 py-2 rounded-full bg-[#C85A17] hover:bg-[#A1470A] text-white dark:bg-[#D0BCFF] dark:hover:bg-[#E8DEF8] dark:text-[#381E72] font-semibold shadow-xs cursor-pointer flex items-center space-x-1.5"
+              >
+                <Download className="w-4 h-4" />
+                <span>Run Download Command</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

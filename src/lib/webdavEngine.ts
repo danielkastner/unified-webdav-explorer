@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showHiddenFiles: false,
   mockServerEnabled: true,
   compactMode: false,
+  downloadCommand: 'curl -s -L -o "{LOCAL_PATH}" "{URL}"',
 };
 
 // Initial Demo Endpoints
@@ -464,5 +465,53 @@ export function getEndpointFileFullUrl(epInfo: EndpointFileInfo, endpoints?: Web
   const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const cleanPath = epInfo.realPath.startsWith('/') ? epInfo.realPath : '/' + epInfo.realPath;
   return `${cleanBase}${cleanPath}`;
+}
+
+export function formatDownloadCommand(
+  template: string | undefined,
+  localPath: string,
+  fileUrl: string
+): string {
+  const baseTemplate = template && template.trim() !== ''
+    ? template
+    : 'curl -s -L -o "{LOCAL_PATH}" "{URL}"';
+
+  let result = baseTemplate;
+
+  let localReplaced = false;
+  let urlReplaced = false;
+
+  if (result.includes('{LOCAL_PATH}')) {
+    result = result.replaceAll('{LOCAL_PATH}', localPath);
+    localReplaced = true;
+  } else if (result.includes('$LOCAL_PATH')) {
+    result = result.replaceAll('$LOCAL_PATH', localPath);
+    localReplaced = true;
+  } else if (result.includes('{localPath}')) {
+    result = result.replaceAll('{localPath}', localPath);
+    localReplaced = true;
+  }
+
+  if (result.includes('{URL}')) {
+    result = result.replaceAll('{URL}', fileUrl);
+    urlReplaced = true;
+  } else if (result.includes('$URL')) {
+    result = result.replaceAll('$URL', fileUrl);
+    urlReplaced = true;
+  } else if (result.includes('{url}')) {
+    result = result.replaceAll('{url}', fileUrl);
+    urlReplaced = true;
+  }
+
+  // If user entered a custom command without placeholders, append arguments
+  if (!localReplaced && !urlReplaced) {
+    result = `${result} "${localPath}" "${fileUrl}"`;
+  } else if (!localReplaced) {
+    result = `${result} "${localPath}"`;
+  } else if (!urlReplaced) {
+    result = `${result} "${fileUrl}"`;
+  }
+
+  return result;
 }
 

@@ -105,6 +105,7 @@ export interface AppSettings {
   showHiddenFiles: boolean;
   mockServerEnabled: boolean;
   compactMode: boolean;
+  downloadCommand?: string;
 }
 
 export interface SyncConflictInfo {

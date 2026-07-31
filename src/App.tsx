@@ -663,6 +663,7 @@ export default function App() {
       <FilePreviewModal
         file={previewFile}
         endpoints={endpoints}
+        settings={settings}
         onClose={() => setPreviewFile(null)}
         onDownload={handleDownloadFile}
         onCopyEndpointUrl={handleCopyEndpointUrl}
