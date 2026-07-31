@@ -11,19 +11,21 @@ import {
   RefreshCw,
   Info
 } from 'lucide-react';
-import { WebDavFile } from '../types';
-import { formatBytes, formatDate, formatMediaInfo } from '../lib/webdavEngine';
+import { WebDavFile, EndpointFileInfo } from '../types';
+import { formatBytes, formatDate, formatMediaInfo, getEndpointFileFullUrl } from '../lib/webdavEngine';
 
 interface DuplicateInspectorModalProps {
   file: WebDavFile | null;
   onClose: () => void;
   onDownloadFromEndpoint: (endpointId: string) => void;
+  onCopyEndpointUrl?: (epInfo: EndpointFileInfo, file: WebDavFile) => void;
 }
 
 export const DuplicateInspectorModal: React.FC<DuplicateInspectorModalProps> = ({
   file,
   onClose,
   onDownloadFromEndpoint,
+  onCopyEndpointUrl,
 }) => {
   if (!file) return null;
 
@@ -113,14 +115,29 @@ export const DuplicateInspectorModal: React.FC<DuplicateInspectorModalProps> = (
                   </div>
                 </div>
 
-                <button
-                  onClick={() => onDownloadFromEndpoint(ep.endpointId)}
-                  className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium text-xs transition-colors cursor-pointer flex items-center space-x-1 shrink-0"
-                  title="Download specifically from this endpoint"
-                >
-                  <Download className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Download</span>
-                </button>
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      const fullUrl = getEndpointFileFullUrl(ep);
+                      navigator.clipboard.writeText(fullUrl);
+                      if (onCopyEndpointUrl) onCopyEndpointUrl(ep, file);
+                    }}
+                    className="p-2 rounded-full text-white transition-transform hover:scale-110 cursor-pointer flex items-center justify-center shadow-2xs"
+                    style={{ backgroundColor: ep.endpointColor || '#3b82f6' }}
+                    title={`Copy URL on ${ep.endpointName}`}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={() => onDownloadFromEndpoint(ep.endpointId)}
+                    className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium text-xs transition-colors cursor-pointer flex items-center space-x-1"
+                    title="Download specifically from this endpoint"
+                  >
+                    <Download className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Download</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>

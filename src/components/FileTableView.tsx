@@ -9,8 +9,6 @@ import {
   Archive,
   File,
   Zap,
-  CheckCircle2,
-  AlertCircle,
   MoreVertical,
   Star,
   Download,
@@ -18,14 +16,18 @@ import {
   Trash2,
   Layers,
   ArrowUpDown,
-  ExternalLink
+  ExternalLink,
+  Play,
+  Copy,
+  Check
 } from 'lucide-react';
-import { WebDavFile, TabItem } from '../types';
-import { formatBytes, formatDate, formatMediaInfo } from '../lib/webdavEngine';
+import { WebDavFile, TabItem, WebDavEndpoint, EndpointFileInfo } from '../types';
+import { formatBytes, formatDate, formatMediaInfo, isMovieFile, getEndpointFileFullUrl } from '../lib/webdavEngine';
 
 interface FileTableViewProps {
   files: WebDavFile[];
   selectedIds: Set<string>;
+  endpoints?: WebDavEndpoint[];
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
   onNavigateFolder: (path: string) => void;
@@ -33,6 +35,8 @@ interface FileTableViewProps {
   onOpenDuplicateInspector: (file: WebDavFile) => void;
   onToggleStarFile: (id: string) => void;
   onDeleteFile: (file: WebDavFile) => void;
+  onDownloadFile?: (file: WebDavFile) => void;
+  onCopyEndpointUrl?: (epInfo: EndpointFileInfo, file: WebDavFile) => void;
   sortBy: TabItem['sortBy'];
   sortOrder: TabItem['sortOrder'];
   onHeaderSort: (key: TabItem['sortBy']) => void;
@@ -41,6 +45,7 @@ interface FileTableViewProps {
 export const FileTableView: React.FC<FileTableViewProps> = ({
   files,
   selectedIds,
+  endpoints = [],
   onToggleSelect,
   onToggleSelectAll,
   onNavigateFolder,
@@ -48,6 +53,8 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
   onOpenDuplicateInspector,
   onToggleStarFile,
   onDeleteFile,
+  onDownloadFile,
+  onCopyEndpointUrl,
   sortBy,
   sortOrder,
   onHeaderSort,
@@ -116,20 +123,6 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
             </th>
 
             <th
-              onClick={() => onHeaderSort('type')}
-              className="p-3 hidden sm:table-cell cursor-pointer hover:text-[#C85A17] dark:hover:text-[#E6E1E5] transition-colors"
-            >
-              <div className="flex items-center space-x-1">
-                <span>Status & Sync</span>
-                {sortBy === 'type' && <ArrowUpDown className="w-3 h-3 text-[#C85A17] dark:text-[#D0BCFF]" />}
-              </div>
-            </th>
-
-            <th className="p-3">
-              <span>Source WebDAV Endpoints</span>
-            </th>
-
-            <th
               onClick={() => onHeaderSort('size')}
               className="p-3 cursor-pointer hover:text-[#C85A17] dark:hover:text-[#E6E1E5] transition-colors text-right"
             >
@@ -149,7 +142,7 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
               </div>
             </th>
 
-            <th className="p-3 w-16 text-center">Actions</th>
+            <th className="p-3 text-center min-w-[180px] w-48">Actions</th>
           </tr>
         </thead>
 
@@ -221,42 +214,6 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
                   </div>
                 </td>
 
-                {/* Status & Sync Indicator Tag */}
-                <td className="p-3 hidden sm:table-cell">
-                  {file.isDuplicate ? (
-                    <button
-                      onClick={() => onOpenDuplicateInspector(file)}
-                      className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-[#A1470A] border border-amber-500/30 dark:bg-[#ffb4ab]/20 dark:text-[#ffb4ab] dark:border-[#93000a] hover:bg-amber-500/25 dark:hover:bg-[#ffb4ab]/30 transition-all cursor-pointer shadow-xs"
-                      title="File is present on multiple endpoints! Click to view breakdown."
-                    >
-                      <Zap className="w-3 h-3 text-[#C85A17] dark:text-[#ffb4ab] animate-bounce" />
-                      <span>⚡ {file.endpoints.length} Endpoints</span>
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#DFD9CE] text-[#6E6259] border border-[#C8C0B3] dark:bg-[#2B2930] dark:text-[#CAC4D0] dark:border-[#49454F]">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>Unique</span>
-                    </span>
-                  )}
-                </td>
-
-                {/* Source WebDAV Endpoint Chips */}
-                <td className="p-3">
-                  <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
-                    {file.endpoints.map((ep) => (
-                      <span
-                        key={ep.endpointId}
-                        className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-white shadow-xs"
-                        style={{ backgroundColor: ep.endpointColor || '#4ADE80' }}
-                        title={`${ep.endpointName} (${ep.realPath})`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80" />
-                        <span className="truncate max-w-[80px]">{ep.endpointName}</span>
-                      </span>
-                    ))}
-                  </div>
-                </td>
-
                 {/* File Size */}
                 <td className="p-3 text-right font-mono text-[#2C221E] dark:text-[#E6E1E5] font-semibold">
                   {file.isDirectory ? '--' : formatBytes(file.size)}
@@ -269,15 +226,60 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
 
                 {/* Actions */}
                 <td className="p-3 text-center">
-                  <div className="flex items-center justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap gap-y-1">
                     {!file.isDirectory && (
-                      <button
-                        onClick={() => onOpenFilePreview(file)}
-                        className="p-1 rounded-full hover:bg-[#DFD9CE] dark:hover:bg-[#49454F] text-[#786C63] dark:text-[#CAC4D0] hover:text-[#2C221E] dark:hover:text-[#E6E1E5] cursor-pointer"
-                        title="Preview File"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
+                      <>
+                        {/* Download Action */}
+                        <button
+                          onClick={() => onDownloadFile ? onDownloadFile(file) : window.open(`/api/webdav/file?path=${encodeURIComponent(file.path)}`, '_blank')}
+                          className="p-1 rounded-full hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 cursor-pointer"
+                          title="Download File"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Stream Action (Movies only) */}
+                        {isMovieFile(file) && (
+                          <button
+                            onClick={() => onOpenFilePreview(file)}
+                            className="p-1 rounded-full hover:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 cursor-pointer flex items-center space-x-0.5"
+                            title="Stream Movie"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                          </button>
+                        )}
+
+                        {/* Copy Endpoint Full URL Action (One per endpoint having the file) */}
+                        {file.endpoints.map((ep) => {
+                          const fullUrl = getEndpointFileFullUrl(ep, endpoints);
+                          return (
+                            <button
+                              key={ep.endpointId}
+                              onClick={() => {
+                                if (onCopyEndpointUrl) {
+                                  onCopyEndpointUrl(ep, file);
+                                } else {
+                                  navigator.clipboard.writeText(fullUrl);
+                                }
+                              }}
+                              className="p-1 rounded-full text-white shadow-2xs hover:scale-110 transition-transform cursor-pointer flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: ep.endpointColor || '#3b82f6' }}
+                              title={`Copy URL on ${ep.endpointName}`}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          );
+                        })}
+
+                        {/* Preview Action */}
+                        <button
+                          onClick={() => onOpenFilePreview(file)}
+                          className="p-1 rounded-full hover:bg-[#DFD9CE] dark:hover:bg-[#49454F] text-[#786C63] dark:text-[#CAC4D0] hover:text-[#2C221E] dark:hover:text-[#E6E1E5] cursor-pointer"
+                          title="Preview File"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                     )}
 
                     {file.isDuplicate && (

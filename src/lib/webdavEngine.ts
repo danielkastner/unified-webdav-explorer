@@ -321,6 +321,7 @@ export function unifyEndpointFiles(
         endpointId: ep.id,
         endpointName: ep.name,
         endpointColor: ep.color,
+        endpointUrl: ep.url,
         realPath: raw.path,
         size: raw.size,
         lastModified: raw.lastModified,
@@ -450,3 +451,18 @@ export function isMovieFile(file: WebDavFile | null | undefined): boolean {
 
   return false;
 }
+
+export function getEndpointFileFullUrl(epInfo: EndpointFileInfo, endpoints?: WebDavEndpoint[]): string {
+  let baseUrl = epInfo.endpointUrl;
+  if (!baseUrl && endpoints) {
+    const matched = endpoints.find((e) => e.id === epInfo.endpointId);
+    if (matched) baseUrl = matched.url;
+  }
+  if (!baseUrl) {
+    baseUrl = 'https://webdav.server/files/';
+  }
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const cleanPath = epInfo.realPath.startsWith('/') ? epInfo.realPath : '/' + epInfo.realPath;
+  return `${cleanBase}${cleanPath}`;
+}
+

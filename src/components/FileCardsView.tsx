@@ -12,31 +12,40 @@ import {
   Star,
   Eye,
   Trash2,
+  Download,
+  Play,
+  Copy,
   HardDrive
 } from 'lucide-react';
-import { WebDavFile } from '../types';
-import { formatBytes, formatDate, formatMediaInfo } from '../lib/webdavEngine';
+import { WebDavFile, WebDavEndpoint, EndpointFileInfo } from '../types';
+import { formatBytes, formatDate, formatMediaInfo, isMovieFile, getEndpointFileFullUrl } from '../lib/webdavEngine';
 
 interface FileCardsViewProps {
   files: WebDavFile[];
   selectedIds: Set<string>;
+  endpoints?: WebDavEndpoint[];
   onToggleSelect: (id: string) => void;
   onNavigateFolder: (path: string) => void;
   onOpenFilePreview: (file: WebDavFile) => void;
   onOpenDuplicateInspector: (file: WebDavFile) => void;
   onToggleStarFile: (id: string) => void;
   onDeleteFile: (file: WebDavFile) => void;
+  onDownloadFile?: (file: WebDavFile) => void;
+  onCopyEndpointUrl?: (epInfo: EndpointFileInfo, file: WebDavFile) => void;
 }
 
 export const FileCardsView: React.FC<FileCardsViewProps> = ({
   files,
   selectedIds,
+  endpoints = [],
   onToggleSelect,
   onNavigateFolder,
   onOpenFilePreview,
   onOpenDuplicateInspector,
   onToggleStarFile,
   onDeleteFile,
+  onDownloadFile,
+  onCopyEndpointUrl,
 }) => {
   return (
     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 select-none bg-[#F0EEEB] dark:bg-[#1C1B1F] transition-colors">
@@ -125,6 +134,62 @@ export const FileCardsView: React.FC<FileCardsViewProps> = ({
                 <File className="w-12 h-12 text-[#786C63] dark:text-[#CAC4D0] group-hover:scale-110 transition-transform" />
               )}
             </div>
+
+            {/* Quick Actions Bar */}
+            {!file.isDirectory && (
+              <div className="mb-2 p-2 rounded-2xl bg-[#F0EEEB] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] flex items-center justify-between gap-1">
+                <div className="flex items-center space-x-1">
+                  {/* Download Action */}
+                  <button
+                    onClick={() => {
+                      if (onDownloadFile) onDownloadFile(file);
+                      else window.open(`/api/webdav/file?path=${encodeURIComponent(file.path)}`, '_blank');
+                    }}
+                    className="p-1.5 rounded-xl bg-[#FAF8F5] dark:bg-[#2B2930] hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 text-[#2C221E] dark:text-[#E6E1E5] transition-colors cursor-pointer flex items-center space-x-1 text-xs font-medium"
+                    title="Download File"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="text-[10px]">Download</span>
+                  </button>
+
+                  {/* Stream Action (Movies only) */}
+                  {isMovieFile(file) && (
+                    <button
+                      onClick={() => onOpenFilePreview(file)}
+                      className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white transition-colors cursor-pointer flex items-center space-x-1 text-xs font-semibold"
+                      title="Stream Movie"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span className="text-[10px]">Stream</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Copy Endpoint URL per Endpoint */}
+                <div className="flex items-center space-x-1 flex-wrap justify-end">
+                  {file.endpoints.map((ep) => {
+                    const fullUrl = getEndpointFileFullUrl(ep, endpoints);
+                    return (
+                      <button
+                        key={ep.endpointId}
+                        onClick={() => {
+                          if (onCopyEndpointUrl) {
+                            onCopyEndpointUrl(ep, file);
+                          } else {
+                            navigator.clipboard.writeText(fullUrl);
+                          }
+                        }}
+                        className="p-1 rounded-full text-white hover:scale-110 transition-transform cursor-pointer flex items-center justify-center shadow-2xs shrink-0"
+                        style={{ backgroundColor: ep.endpointColor || '#3b82f6' }}
+                        title={`Copy URL on ${ep.endpointName}`}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Endpoints & Metadata Footer */}
             <div className="space-y-2 pt-2 border-t border-[#D8D2C9] dark:border-[#49454F] text-xs">

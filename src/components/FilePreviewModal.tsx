@@ -21,20 +21,25 @@ import {
   Clock,
   Tag,
 } from 'lucide-react';
-import { WebDavFile, TMDBMovieData } from '../types';
-import { formatBytes, formatDate, formatMediaInfo, isMovieFile, fetchTmdbMetadata } from '../lib/webdavEngine';
+import { WebDavFile, TMDBMovieData, WebDavEndpoint, EndpointFileInfo } from '../types';
+import { formatBytes, formatDate, formatMediaInfo, isMovieFile, fetchTmdbMetadata, getEndpointFileFullUrl } from '../lib/webdavEngine';
 
 interface FilePreviewModalProps {
   file: WebDavFile | null;
+  endpoints?: WebDavEndpoint[];
   onClose: () => void;
   onDownload: (file: WebDavFile) => void;
+  onCopyEndpointUrl?: (epInfo: EndpointFileInfo, file: WebDavFile) => void;
 }
 
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   file,
+  endpoints = [],
   onClose,
   onDownload,
+  onCopyEndpointUrl,
 }) => {
+  const [copiedEpId, setCopiedEpId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -524,20 +529,51 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             </div>
           </div>
 
-          {/* Endpoints Hosting list */}
+          {/* Endpoints Hosting list & Copy Endpoint Full URL Actions */}
           <div className="space-y-2 text-xs">
-            <h4 className="font-bold text-[#2C221E] dark:text-[#E6E1E5]">Hosting WebDAV Endpoints</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-[#2C221E] dark:text-[#E6E1E5]">
+                Hosting WebDAV Endpoints ({file.endpoints.length})
+              </h4>
+              <span className="text-[10px] text-[#786C63] dark:text-[#CAC4D0]">
+                Click an endpoint to copy its full URL
+              </span>
+            </div>
+
             <div className="flex flex-wrap gap-2">
-              {file.endpoints.map((ep) => (
-                <div
-                  key={ep.endpointId}
-                  className="px-3 py-1.5 rounded-2xl text-white font-medium flex items-center space-x-2 text-xs"
-                  style={{ backgroundColor: ep.endpointColor }}
-                >
-                  <span className="w-2 h-2 rounded-full bg-white opacity-90" />
-                  <span>{ep.endpointName}</span>
-                </div>
-              ))}
+              {file.endpoints.map((ep) => {
+                const fullUrl = getEndpointFileFullUrl(ep, endpoints);
+                const isJustCopied = copiedEpId === ep.endpointId;
+
+                return (
+                  <button
+                    key={ep.endpointId}
+                    onClick={() => {
+                      if (onCopyEndpointUrl) {
+                        onCopyEndpointUrl(ep, file);
+                      } else {
+                        navigator.clipboard.writeText(fullUrl);
+                      }
+                      setCopiedEpId(ep.endpointId);
+                      setTimeout(() => setCopiedEpId(null), 2000);
+                    }}
+                    className="px-3 py-1.5 rounded-2xl text-white font-semibold flex items-center space-x-2 text-xs hover:opacity-90 hover:scale-102 transition-all cursor-pointer shadow-xs"
+                    style={{ backgroundColor: ep.endpointColor || '#3b82f6' }}
+                    title={`Copy URL on ${ep.endpointName}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-white opacity-90 shrink-0" />
+                    <span>{ep.endpointName}</span>
+                    <span className="pl-1 border-l border-white/30 flex items-center space-x-1">
+                      {isJustCopied ? (
+                        <Check className="w-3 h-3 text-emerald-200" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-white/90" />
+                      )}
+                      <span className="text-[10px]">{isJustCopied ? 'Copied URL!' : 'Copy URL'}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

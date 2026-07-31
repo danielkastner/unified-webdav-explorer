@@ -12,31 +12,40 @@ import {
   Star,
   Eye,
   Trash2,
+  Download,
+  Play,
+  Copy,
   CheckCircle2
 } from 'lucide-react';
-import { WebDavFile } from '../types';
-import { formatBytes, formatDate, formatMediaInfo } from '../lib/webdavEngine';
+import { WebDavFile, WebDavEndpoint, EndpointFileInfo } from '../types';
+import { formatBytes, formatDate, formatMediaInfo, isMovieFile, getEndpointFileFullUrl } from '../lib/webdavEngine';
 
 interface FileGridViewProps {
   files: WebDavFile[];
   selectedIds: Set<string>;
+  endpoints?: WebDavEndpoint[];
   onToggleSelect: (id: string) => void;
   onNavigateFolder: (path: string) => void;
   onOpenFilePreview: (file: WebDavFile) => void;
   onOpenDuplicateInspector: (file: WebDavFile) => void;
   onToggleStarFile: (id: string) => void;
   onDeleteFile: (file: WebDavFile) => void;
+  onDownloadFile?: (file: WebDavFile) => void;
+  onCopyEndpointUrl?: (epInfo: EndpointFileInfo, file: WebDavFile) => void;
 }
 
 export const FileGridView: React.FC<FileGridViewProps> = ({
   files,
   selectedIds,
+  endpoints = [],
   onToggleSelect,
   onNavigateFolder,
   onOpenFilePreview,
   onOpenDuplicateInspector,
   onToggleStarFile,
   onDeleteFile,
+  onDownloadFile,
+  onCopyEndpointUrl,
 }) => {
   const getFileIcon = (file: WebDavFile) => {
     if (file.isDirectory) return <Folder className="w-10 h-10 text-amber-500 shrink-0" />;
@@ -140,8 +149,63 @@ export const FileGridView: React.FC<FileGridViewProps> = ({
               </div>
             </div>
 
-            {/* Bottom: Source Endpoint Badges */}
-            <div className="mt-2 pt-2 border-t border-[#D8D2C9] dark:border-[#49454F] flex items-center justify-between">
+            {/* Actions Bar for files */}
+            {!file.isDirectory && (
+              <div className="my-1.5 pt-1.5 border-t border-[#D8D2C9]/60 dark:border-[#49454F]/60 flex items-center justify-center gap-1 flex-wrap">
+                {/* Download */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onDownloadFile) onDownloadFile(file);
+                    else window.open(`/api/webdav/file?path=${encodeURIComponent(file.path)}`, '_blank');
+                  }}
+                  className="p-1 rounded-md bg-[#E7E2DB] dark:bg-[#381E72] hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 text-[#786C63] dark:text-[#D0BCFF] cursor-pointer transition-colors"
+                  title="Download File"
+                >
+                  <Download className="w-3 h-3" />
+                </button>
+
+                {/* Stream Movie (Movies only) */}
+                {isMovieFile(file) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenFilePreview(file);
+                    }}
+                    className="p-1 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white cursor-pointer transition-colors"
+                    title="Stream Movie"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                  </button>
+                )}
+
+                {/* Copy Endpoint Full URL per Endpoint */}
+                {file.endpoints.map((ep) => {
+                  const fullUrl = getEndpointFileFullUrl(ep, endpoints);
+                  return (
+                    <button
+                      key={ep.endpointId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onCopyEndpointUrl) {
+                          onCopyEndpointUrl(ep, file);
+                        } else {
+                          navigator.clipboard.writeText(fullUrl);
+                        }
+                      }}
+                      className="p-1 rounded-full text-white hover:scale-110 transition-transform cursor-pointer flex items-center justify-center shadow-2xs shrink-0"
+                      style={{ backgroundColor: ep.endpointColor || '#3b82f6' }}
+                      title={`Copy URL on ${ep.endpointName}`}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Bottom: Source Endpoint Badges & Modified date */}
+            <div className="mt-1 pt-1.5 border-t border-[#D8D2C9] dark:border-[#49454F] flex items-center justify-between">
               <div className="flex items-center -space-x-1.5 overflow-hidden">
                 {file.endpoints.map((ep) => (
                   <span

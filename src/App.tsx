@@ -5,6 +5,7 @@ import {
   TabItem,
   FavoriteItem,
   AppSettings,
+  EndpointFileInfo,
 } from './types';
 import {
   loadEndpointsFromStorage,
@@ -18,8 +19,10 @@ import {
   fetchTmdbMetadata,
   unifyEndpointFiles,
   getParentPath,
+  getEndpointFileFullUrl,
   INITIAL_ENDPOINTS,
 } from './lib/webdavEngine';
+import { Check, X } from 'lucide-react';
 
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { NavigationDrawer } from './components/NavigationDrawer';
@@ -72,6 +75,7 @@ export default function App() {
   const [isElectronGuideOpen, setIsElectronGuideOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<WebDavFile | null>(null);
   const [duplicateInspectFile, setDuplicateInspectFile] = useState<WebDavFile | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Active Tab reference
   const activeTab = useMemo(() => {
@@ -468,6 +472,15 @@ export default function App() {
     window.open(`/api/webdav/file?path=${encodeURIComponent(file.path)}`, '_blank');
   };
 
+  const handleCopyEndpointUrl = (epInfo: EndpointFileInfo, file: WebDavFile) => {
+    const fullUrl = getEndpointFileFullUrl(epInfo, endpoints);
+    navigator.clipboard.writeText(fullUrl);
+    setToastMessage(`Copied endpoint URL for "${epInfo.endpointName}": ${fullUrl}`);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
   const handleResetDemoData = () => {
     localStorage.removeItem('unified_webdav_endpoints_v1');
     localStorage.removeItem('unified_webdav_settings_v1');
@@ -574,6 +587,7 @@ export default function App() {
               <FileTableView
                 files={activeDirectoryFiles}
                 selectedIds={selectedFileIds}
+                endpoints={endpoints}
                 onToggleSelect={handleToggleSelectFile}
                 onToggleSelectAll={handleToggleSelectAll}
                 onNavigateFolder={handleNavigatePath}
@@ -581,6 +595,8 @@ export default function App() {
                 onOpenDuplicateInspector={(file) => setDuplicateInspectFile(file)}
                 onToggleStarFile={handleToggleStarFile}
                 onDeleteFile={handleDeleteFile}
+                onDownloadFile={handleDownloadFile}
+                onCopyEndpointUrl={handleCopyEndpointUrl}
                 sortBy={activeTab.sortBy}
                 sortOrder={activeTab.sortOrder}
                 onHeaderSort={(key) => {
@@ -595,23 +611,29 @@ export default function App() {
               <FileGridView
                 files={activeDirectoryFiles}
                 selectedIds={selectedFileIds}
+                endpoints={endpoints}
                 onToggleSelect={handleToggleSelectFile}
                 onNavigateFolder={handleNavigatePath}
                 onOpenFilePreview={(file) => setPreviewFile(file)}
                 onOpenDuplicateInspector={(file) => setDuplicateInspectFile(file)}
                 onToggleStarFile={handleToggleStarFile}
                 onDeleteFile={handleDeleteFile}
+                onDownloadFile={handleDownloadFile}
+                onCopyEndpointUrl={handleCopyEndpointUrl}
               />
             ) : (
               <FileCardsView
                 files={activeDirectoryFiles}
                 selectedIds={selectedFileIds}
+                endpoints={endpoints}
                 onToggleSelect={handleToggleSelectFile}
                 onNavigateFolder={handleNavigatePath}
                 onOpenFilePreview={(file) => setPreviewFile(file)}
                 onOpenDuplicateInspector={(file) => setDuplicateInspectFile(file)}
                 onToggleStarFile={handleToggleStarFile}
                 onDeleteFile={handleDeleteFile}
+                onDownloadFile={handleDownloadFile}
+                onCopyEndpointUrl={handleCopyEndpointUrl}
               />
             )}
           </div>
@@ -635,12 +657,15 @@ export default function App() {
         onDownloadFromEndpoint={(epId) => {
           if (duplicateInspectFile) handleDownloadFile(duplicateInspectFile);
         }}
+        onCopyEndpointUrl={handleCopyEndpointUrl}
       />
 
       <FilePreviewModal
         file={previewFile}
+        endpoints={endpoints}
         onClose={() => setPreviewFile(null)}
         onDownload={handleDownloadFile}
+        onCopyEndpointUrl={handleCopyEndpointUrl}
       />
 
       <SettingsModal
@@ -670,6 +695,20 @@ export default function App() {
         isOpen={isElectronGuideOpen}
         onClose={() => setIsElectronGuideOpen(false)}
       />
+
+      {/* Floating Notification Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#1C1B1F] text-[#E6E1E5] dark:bg-[#E6E1E5] dark:text-[#1C1B1F] shadow-2xl flex items-center space-x-3 text-xs font-semibold animate-fadeIn border border-[#49454F]/40 shrink-0 max-w-md">
+          <Check className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+          <span className="truncate">{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="p-1 rounded-full hover:bg-white/10 dark:hover:bg-black/10 cursor-pointer ml-auto"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

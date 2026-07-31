@@ -23,6 +23,7 @@ export interface EndpointFileInfo {
   endpointId: string;
   endpointName: string;
   endpointColor: string;
+  endpointUrl?: string;
   realPath: string;
   size: number;
   lastModified: string;
