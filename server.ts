@@ -759,21 +759,26 @@ Object.values(TMDB_JSON_CACHE).forEach((item) => {
 function parseMovieTitleAndYear(filename: string): { cleanTitle: string; year?: string } {
   const nameWithoutExt = filename.replace(/\.[a-zA-Z0-9]+$/, '');
   let year: string | undefined = undefined;
+  let cleaned = '';
 
   const yearMatch = nameWithoutExt.match(/(19\d\d|20\d\d)/);
-  if (yearMatch) {
+  if (yearMatch && yearMatch.index !== undefined) {
     year = yearMatch[1];
+    const substringBeforeYear = nameWithoutExt.substring(0, yearMatch.index);
+    cleaned = substringBeforeYear
+      .replace(/[._-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } else {
+    cleaned = nameWithoutExt
+      .replace(/(S\d\d?E\d\d?|S\d\d?|E\d\d?|\d+x\d+)/gi, ' ')
+      .replace(/(1080p|720p|2160p|4k|hdr|web|web-dl|webrip|bluray|h264|h265|x264|x265|aac|ac3|5\.1|dl|uhd|bdrip|remux|dts|atmos|yify|rarbg|unrated|extended|cut|ld)/gi, ' ')
+      .replace(/(WOTT|FuN|LDO)/gi, '')
+      .replace(/(German|English)/gi, '')
+      .replace(/[._-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
-
-  let cleaned = nameWithoutExt
-    .replace(/(19\d\d|20\d\d)/g, ' ')
-    .replace(/(S\d\d?E\d\d?|S\d\d?|E\d\d?|\d+x\d+)/gi, ' ')
-    .replace(/(1080p|720p|2160p|4k|hdr|web|web-dl|webrip|bluray|h264|h265|x264|x265|aac|ac3|5\.1|dl|uhd|bdrip|remux|dts|atmos|yify|rarbg|unrated|extended|cut|ld)/gi, ' ')
-    .replace(/(WOTT|FuN|LDO)/gi, '')
-    .replace(/(German|English)/gi, '')
-    .replace(/[._-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 
   return { cleanTitle: cleaned || nameWithoutExt, year };
 }
