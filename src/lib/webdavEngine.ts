@@ -67,10 +67,10 @@ export const INITIAL_ENDPOINTS: WebDavEndpoint[] = [
 ];
 
 export const INITIAL_FAVORITES = [
-  { id: 'fav-1', name: 'Documents', path: '/Documents', isFolder: true, icon: 'folder' },
-  { id: 'fav-2', name: 'Photos', path: '/Photos', isFolder: true, icon: 'folder' },
-  { id: 'fav-3', name: 'Projects', path: '/Projects', isFolder: true, icon: 'folder' },
-  { id: 'fav-4', name: 'Q3 Financial Report', path: '/Documents/Q3_Financial_Report.pdf', isFolder: false, icon: 'file' },
+  { id: 'fav-1', name: 'Documents', path: '/Documents', isFolder: true, icon: 'folder', isDemo: true },
+  { id: 'fav-2', name: 'Photos', path: '/Photos', isFolder: true, icon: 'folder', isDemo: true },
+  { id: 'fav-3', name: 'Projects', path: '/Projects', isFolder: true, icon: 'folder', isDemo: true },
+  { id: 'fav-4', name: 'Q3 Financial Report', path: '/Documents/Q3_Financial_Report.pdf', isFolder: false, icon: 'file', isDemo: true },
 ];
 
 export function getFileTypeFromName(filename: string, isDirectory: boolean): WebDavFile['fileType'] {

@@ -641,7 +641,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
                 </div>
                 <p className="text-xs text-[#786C63] dark:text-[#CAC4D0]">
-                  Enable virtual sample WebDAV endpoints to test directory merging. When set to false, demo endpoints (Server-Alpha, Server-Beta, Backup-Gamma) are hidden from all endpoint listings and unified views.
+                  Enable virtual sample WebDAV endpoints to test directory merging. When set to false, demo endpoints and demo favorites are hidden from all endpoint listings, navigation drawer, and unified views.
                 </p>
 
                 <label className="flex items-center justify-between p-3 rounded-xl border border-[#D8D2C9] dark:border-[#49454F] bg-white dark:bg-[#2B2930] cursor-pointer hover:bg-[#F5F2ED] dark:hover:bg-[#312E37] transition-colors mt-2">

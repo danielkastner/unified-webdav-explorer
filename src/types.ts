@@ -96,6 +96,7 @@ export interface FavoriteItem {
   path: string;
   isFolder: boolean;
   icon?: string;
+  isDemo?: boolean;
 }
 
 export interface AppSettings {

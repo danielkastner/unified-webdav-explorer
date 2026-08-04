@@ -248,6 +248,15 @@ export default function App() {
     return endpoints.filter((ep) => settings.mockServerEnabled || !ep.isDemo);
   }, [endpoints, settings.mockServerEnabled]);
 
+  // Compute visible favorites according to mockServerEnabled setting
+  const visibleFavorites = useMemo(() => {
+    return favorites.filter((fav) => {
+      if (settings.mockServerEnabled) return true;
+      const isDemo = fav.isDemo || ['fav-1', 'fav-2', 'fav-3', 'fav-4'].includes(fav.id);
+      return !isDemo;
+    });
+  }, [favorites, settings.mockServerEnabled]);
+
   // Compute Unified Merged Files Tree
   const unifiedFiles = useMemo(() => {
     return unifyEndpointFiles(rawFiles, visibleEndpoints, settings);
@@ -524,7 +533,7 @@ export default function App() {
           isExpanded={isDrawerExpanded}
           onToggleExpand={() => setIsDrawerExpanded(!isDrawerExpanded)}
           endpoints={visibleEndpoints}
-          favorites={favorites}
+          favorites={visibleFavorites}
           activePath={activeTab.path}
           onNavigate={handleNavigatePath}
           onOpenEndpointsModal={() => setIsEndpointsModalOpen(true)}
