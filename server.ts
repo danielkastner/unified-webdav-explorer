@@ -63,6 +63,7 @@ const DEMO_FILES = [
   // Folders
   { path: "/Documents", name: "Documents", isDirectory: true, size: 0, mimeType: "folder", lastModified: "2026-07-28T14:20:00Z", endpoints: ["ep-1", "ep-2", "ep-3"] },
   { path: "/Movies", name: "Movies", isDirectory: true, size: 0, mimeType: "folder", lastModified: "2026-07-29T19:00:00Z", endpoints: ["ep-1", "ep-2"] },
+  { path: "/TV-Shows", name: "TV-Shows", isDirectory: true, size: 0, mimeType: "folder", lastModified: "2026-07-29T19:00:00Z", endpoints: ["ep-1", "ep-2"] },
   { path: "/Photos", name: "Photos", isDirectory: true, size: 0, mimeType: "folder", lastModified: "2026-07-25T09:15:00Z", endpoints: ["ep-1", "ep-2"] },
   { path: "/Projects", name: "Projects", isDirectory: true, size: 0, mimeType: "folder", lastModified: "2026-07-29T11:45:00Z", endpoints: ["ep-1", "ep-3"] },
   { path: "/Archives", name: "Archives", isDirectory: true, size: 0, mimeType: "folder", lastModified: "2026-06-10T16:00:00Z", endpoints: ["ep-2"] },
@@ -79,6 +80,10 @@ const DEMO_FILES = [
   { path: "/Movies/Pulp_Fiction.1994.json", name: "Pulp_Fiction.1994.json", isDirectory: false, size: 820, mimeType: "application/json", lastModified: "2026-06-25T18:41:00Z", endpoints: ["ep-1"] },
   { path: "/Movies/Spirited_Away.2001.mkv", name: "Spirited_Away.2001.mkv", isDirectory: false, size: 2800000000, mimeType: "video/x-matroska", lastModified: "2026-07-02T09:15:00Z", endpoints: ["ep-2"], mediaInfo: { title: "Spirited Away", year: 2001, rating: "8.6/10", extra: "Animation / Fantasy" } },
   { path: "/Movies/Spirited_Away.2001.json", name: "Spirited_Away.2001.json", isDirectory: false, size: 880, mimeType: "application/json", lastModified: "2026-07-02T09:16:00Z", endpoints: ["ep-2"] },
+
+  // TV-Shows Media
+  { path: "/TV-Shows/Breaking_Bad_S01E01.1080p.mkv", name: "Breaking_Bad_S01E01.1080p.mkv", isDirectory: false, size: 2100000000, mimeType: "video/x-matroska", lastModified: "2026-07-16T12:00:00Z", endpoints: ["ep-1", "ep-2"], mediaInfo: { title: "Breaking Bad", year: 2008, rating: "9.5/10", extra: "S01E01 - Pilot" } },
+  { path: "/TV-Shows/Stranger_Things_S01E01.4K.mkv", name: "Stranger_Things_S01E01.4K.mkv", isDirectory: false, size: 3400000000, mimeType: "video/x-matroska", lastModified: "2026-07-20T18:00:00Z", endpoints: ["ep-2"], mediaInfo: { title: "Stranger Things", year: 2016, rating: "8.7/10", extra: "S01E01 - Chapter One" } },
 
   // Documents (Some present on multiple endpoints, some unique)
   { path: "/Documents/Q3_Financial_Report.pdf", name: "Q3_Financial_Report.pdf", isDirectory: false, size: 4580000, mimeType: "application/pdf", lastModified: "2026-07-28T10:12:00Z", endpoints: ["ep-1", "ep-2"], mediaInfo: { title: "Q3 Financial Report", year: 2026, rating: "Approved" } }, // DUPLICATE!
@@ -564,7 +569,7 @@ app.post("/api/shell/exec", (req, res) => {
   const sanitizedCmd = command.trim();
   const timestamp = new Date().toLocaleTimeString();
 
-  exec(sanitizedCmd, { shell: "/bin/bash", timeout: 15000 }, (error, stdout, stderr) => {
+  exec(sanitizedCmd, { shell: "/bin/bash", timeout: 5 * 60 * 1000 }, (error, stdout, stderr) => {
     if (error) {
       return res.json({
         success: true,
@@ -761,6 +766,7 @@ function parseMovieTitleAndYear(filename: string): { cleanTitle: string; year?: 
 
   let cleaned = nameWithoutExt
     .replace(/(19\d\d|20\d\d)/g, ' ')
+    .replace(/(S\d\d?E\d\d?|S\d\d?|E\d\d?|\d+x\d+)/gi, ' ')
     .replace(/(1080p|720p|2160p|4k|hdr|web|web-dl|webrip|bluray|h264|h265|x264|x265|aac|ac3|5\.1|dl|uhd|bdrip|remux|dts|atmos|yify|rarbg|unrated|extended|cut|ld)/gi, ' ')
     .replace(/(WOTT|FuN|LDO)/gi, '')
     .replace(/(German|English)/gi, '')
@@ -771,9 +777,9 @@ function parseMovieTitleAndYear(filename: string): { cleanTitle: string; year?: 
   return { cleanTitle: cleaned || nameWithoutExt, year };
 }
 
-// 6. TMDB Fetch & JSON Sidecar Generator Endpoint
+// 6. TMDB Fetch & JSON Sidecar Generator Endpoint (Supports Movies & TV Shows)
 app.post("/api/tmdb/fetch", async (req, res) => {
-  const { filePath, filename, forceRefresh } = req.body;
+  const { filePath, filename, forceRefresh, mediaType = 'movie' } = req.body;
 
   if (!filename) {
     return res.status(400).json({ success: false, error: "Filename is required" });
@@ -825,7 +831,13 @@ app.post("/api/tmdb/fetch", async (req, res) => {
   // Step 2: Try querying TMDB API if key exists
   if (apiKey && apiKey !== 'MY_TMDB_API_KEY') {
     try {
-      const tmdbUrl = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanTitle)}${year ? `&year=${year}` : ''}`;
+      let tmdbUrl = '';
+      if (mediaType === 'tv') {
+        tmdbUrl = `https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(cleanTitle)}${year ? `&first_air_date_year=${year}` : ''}`;
+      } else {
+        tmdbUrl = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanTitle)}${year ? `&year=${year}` : ''}`;
+      }
+
       const authHeader = apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`;
       const tmdbRes = await fetch(tmdbUrl, {
         headers: {
@@ -839,34 +851,62 @@ app.post("/api/tmdb/fetch", async (req, res) => {
           const match = tmdbJson.results[0];
           source = 'tmdb_api';
 
-          const genreDict: Record<number, string> = {
-            28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
-            99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
-            27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
-            10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
-          };
+          if (mediaType === 'tv') {
+            const tvGenreDict: Record<number, string> = {
+              10759: 'Action & Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+              99: 'Documentary', 18: 'Drama', 10762: 'Kids', 9648: 'Mystery',
+              10763: 'News', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap',
+              10767: 'Talk', 10768: 'War & Politics', 37: 'Western'
+            };
 
-          movieData = {
-            id: match.id,
-            title: match.title,
-            original_title: match.original_title,
-            overview: match.overview,
-            poster_path: match.poster_path,
-            poster_url: match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : undefined,
-            backdrop_path: match.backdrop_path,
-            backdrop_url: match.backdrop_path ? `https://image.tmdb.org/t/p/w1280${match.backdrop_path}` : undefined,
-            release_date: match.release_date,
-            vote_average: Math.round(match.vote_average * 10) / 10,
-            vote_count: match.vote_count,
-            genres: Array.isArray(match.genre_ids) ? match.genre_ids.map((gid: number) => genreDict[gid]).filter(Boolean) : ['Movie'],
-            runtime: match.runtime || 120,
-            tagline: match.tagline || `TMDB Movie Listing (${match.release_date?.slice(0, 4) || year || 'Feature'})`,
-          };
+            movieData = {
+              id: match.id,
+              title: match.name || match.original_name,
+              original_title: match.original_name,
+              overview: match.overview,
+              poster_path: match.poster_path,
+              poster_url: match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : undefined,
+              backdrop_path: match.backdrop_path,
+              backdrop_url: match.backdrop_path ? `https://image.tmdb.org/t/p/w1280${match.backdrop_path}` : undefined,
+              release_date: match.first_air_date,
+              vote_average: Math.round((match.vote_average || 0) * 10) / 10,
+              vote_count: match.vote_count,
+              genres: Array.isArray(match.genre_ids) ? match.genre_ids.map((gid: number) => tvGenreDict[gid]).filter(Boolean) : ['TV Show'],
+              runtime: 45,
+              tagline: `TMDB TV Series (${match.first_air_date?.slice(0, 4) || year || 'Series'})`,
+              mediaType: 'tv',
+            };
+          } else {
+            const genreDict: Record<number, string> = {
+              28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+              99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+              27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
+              10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
+            };
+
+            movieData = {
+              id: match.id,
+              title: match.title,
+              original_title: match.original_title,
+              overview: match.overview,
+              poster_path: match.poster_path,
+              poster_url: match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : undefined,
+              backdrop_path: match.backdrop_path,
+              backdrop_url: match.backdrop_path ? `https://image.tmdb.org/t/p/w1280${match.backdrop_path}` : undefined,
+              release_date: match.release_date,
+              vote_average: Math.round(match.vote_average * 10) / 10,
+              vote_count: match.vote_count,
+              genres: Array.isArray(match.genre_ids) ? match.genre_ids.map((gid: number) => genreDict[gid]).filter(Boolean) : ['Movie'],
+              runtime: match.runtime || 120,
+              tagline: match.tagline || `TMDB Movie Listing (${match.release_date?.slice(0, 4) || year || 'Feature'})`,
+              mediaType: 'movie',
+            };
+          }
         } else {
-          console.warn('[TMDB Fetch Warning] No Results found', tmdbJson)  
+          console.warn('[TMDB Fetch Warning] No Results found', tmdbJson);
         }
       } else {
-        console.warn('[TMDB Fetch Warning] API Lookup was NOT OK', tmdbRes)
+        console.warn('[TMDB Fetch Warning] API Lookup was NOT OK', tmdbRes);
       }
     } catch (err) {
       console.warn('[TMDB Fetch Warning] API lookup failed, switching to local DB fallback', err);
@@ -876,33 +916,87 @@ app.post("/api/tmdb/fetch", async (req, res) => {
   // Step 3: Fallback database if no API key or API match
   if (!movieData) {
     const titleKey = cleanTitle.toLowerCase();
-    if (titleKey.includes('inception')) {
-      movieData = { ...TMDB_JSON_CACHE['/Movies/Inception.2010.1080p.json'] };
-    } else if (titleKey.includes('interstellar')) {
-      movieData = { ...TMDB_JSON_CACHE['/Movies/Interstellar.2014.2160p.json'] };
-    } else if (titleKey.includes('matrix')) {
-      movieData = { ...TMDB_JSON_CACHE['/Movies/The_Matrix.1999.4K.json'] };
-    } else if (titleKey.includes('pulp')) {
-      movieData = { ...TMDB_JSON_CACHE['/Movies/Pulp_Fiction.1994.json'] };
-    } else if (titleKey.includes('spirited')) {
-      movieData = { ...TMDB_JSON_CACHE['/Movies/Spirited_Away.2001.json'] };
+    if (mediaType === 'tv') {
+      if (titleKey.includes('breaking')) {
+        movieData = {
+          id: 1396,
+          title: "Breaking Bad",
+          original_title: "Breaking Bad",
+          overview: "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine with a former student in order to secure his family's future.",
+          poster_url: "https://image.tmdb.org/t/p/w500/zt2A2f93B88P5eLXq8gA01RyrxR.jpg",
+          backdrop_url: "https://image.tmdb.org/t/p/w1280/9faGSFi5jr22B1Rpt2vhB8AAn1i.jpg",
+          release_date: "2008-01-20",
+          vote_average: 8.9,
+          vote_count: 14200,
+          genres: ["Drama", "Crime"],
+          runtime: 47,
+          tagline: "Change the equation.",
+          mediaType: "tv",
+        };
+      } else if (titleKey.includes('stranger')) {
+        movieData = {
+          id: 66732,
+          title: "Stranger Things",
+          original_title: "Stranger Things",
+          overview: "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.",
+          poster_url: "https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
+          backdrop_url: "https://image.tmdb.org/t/p/w1280/56v2Kj23R2K418JCo2yC9m9S6f8.jpg",
+          release_date: "2016-07-15",
+          vote_average: 8.6,
+          vote_count: 17100,
+          genres: ["Sci-Fi & Fantasy", "Drama", "Mystery"],
+          runtime: 50,
+          tagline: "Every ending has a beginning.",
+          mediaType: "tv",
+        };
+      } else {
+        const displayTitle = cleanTitle.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        movieData = {
+          id: Math.floor(Math.random() * 900000) + 100000,
+          title: displayTitle,
+          original_title: displayTitle,
+          overview: `TMDB TV Series entry for "${displayTitle}" parsed directly from file ${filename}. Features multi-season episode metadata.`,
+          release_date: year ? `${year}-01-15` : '2021-09-10',
+          vote_average: 8.4,
+          vote_count: 980,
+          genres: ['TV Series', 'Drama'],
+          runtime: 45,
+          tagline: `Watch ${displayTitle} TV Series`,
+          poster_url: 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=500&q=80',
+          backdrop_url: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1280&q=80',
+          mediaType: 'tv',
+        };
+      }
     } else {
-      // Dynamic fallback generator
-      const displayTitle = cleanTitle.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      movieData = {
-        id: Math.floor(Math.random() * 900000) + 100000,
-        title: displayTitle,
-        original_title: displayTitle,
-        overview: `A cinematic feature film "${displayTitle}" parsed directly from file ${filename}. Features high definition digital audio/video streams synced across WebDAV storage nodes.`,
-        release_date: year ? `${year}-06-15` : '2022-01-01',
-        vote_average: 8.1,
-        vote_count: 1420,
-        genres: ['Feature Film', 'Digital Media'],
-        runtime: 118,
-        tagline: `Experience ${displayTitle}`,
-        poster_url: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=500&q=80',
-        backdrop_url: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1280&q=80',
-      };
+      if (titleKey.includes('inception')) {
+        movieData = { ...TMDB_JSON_CACHE['/Movies/Inception.2010.1080p.json'], mediaType: 'movie' };
+      } else if (titleKey.includes('interstellar')) {
+        movieData = { ...TMDB_JSON_CACHE['/Movies/Interstellar.2014.2160p.json'], mediaType: 'movie' };
+      } else if (titleKey.includes('matrix')) {
+        movieData = { ...TMDB_JSON_CACHE['/Movies/The_Matrix.1999.4K.json'], mediaType: 'movie' };
+      } else if (titleKey.includes('pulp')) {
+        movieData = { ...TMDB_JSON_CACHE['/Movies/Pulp_Fiction.1994.json'], mediaType: 'movie' };
+      } else if (titleKey.includes('spirited')) {
+        movieData = { ...TMDB_JSON_CACHE['/Movies/Spirited_Away.2001.json'], mediaType: 'movie' };
+      } else {
+        // Dynamic fallback generator
+        const displayTitle = cleanTitle.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        movieData = {
+          id: Math.floor(Math.random() * 900000) + 100000,
+          title: displayTitle,
+          original_title: displayTitle,
+          overview: `A cinematic feature film "${displayTitle}" parsed directly from file ${filename}. Features high definition digital audio/video streams synced across WebDAV storage nodes.`,
+          release_date: year ? `${year}-06-15` : '2022-01-01',
+          vote_average: 8.1,
+          vote_count: 1420,
+          genres: ['Feature Film', 'Digital Media'],
+          runtime: 118,
+          tagline: `Experience ${displayTitle}`,
+          poster_url: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=500&q=80',
+          backdrop_url: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1280&q=80',
+          mediaType: 'movie',
+        };
+      }
     }
   }
 

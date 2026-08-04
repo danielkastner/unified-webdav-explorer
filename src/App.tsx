@@ -17,6 +17,7 @@ import {
   fetchEndpointsData,
   fetchFolderData,
   fetchTmdbMetadata,
+  getMediaTypeForFile,
   unifyEndpointFiles,
   getParentPath,
   getEndpointFileFullUrl,
@@ -155,36 +156,43 @@ export default function App() {
     }
   }, [activeTab?.path, loadFolder]);
 
-  // Auto-fetch TMDB metadata for movie files in the currently listed directory lacking metadata, saving as JSON sidecar
+  // Auto-fetch TMDB metadata for video files in configured Movie/TV directories in current listing
   useEffect(() => {
     if (!rawFiles || rawFiles.length === 0) return;
 
     const currentDirPath = activeTab?.path || '/';
 
-    const moviesNeedingTmdb = rawFiles.filter((rf) => {
-      if (rf.isDirectory || rf.tmdbData) return false;
+    const itemsNeedingTmdb = rawFiles
+      .map((rf) => {
+        if (rf.isDirectory || rf.tmdbData) return null;
 
-      // Only fetch for files located directly inside the currently listed directory
-      const parentPath = getParentPath(rf.path);
-      if (parentPath !== currentDirPath) return false;
+        // Only fetch for files located directly inside the currently listed directory
+        const parentPath = getParentPath(rf.path);
+        if (parentPath !== currentDirPath) return null;
 
-      const ext = (rf.name || '').split('.').pop()?.toLowerCase() || '';
-      const isVideoExt = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'wmv'].includes(ext);
-      const isVideoMime = (rf.mimeType || '').startsWith('video/');
-      const isMoviesFolder = (rf.path || '').toLowerCase().includes('/movies/');
-      return isVideoExt || isVideoMime || isMoviesFolder;
-    });
+        const ext = (rf.name || '').split('.').pop()?.toLowerCase() || '';
+        const isVideoExt = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ts'].includes(ext);
+        const isVideoMime = (rf.mimeType || '').startsWith('video/');
+        if (!isVideoExt && !isVideoMime) return null;
 
-    if (moviesNeedingTmdb.length === 0) return;
+        // Determine if file is in a configured Movie or TV-Show directory
+        const mediaType = getMediaTypeForFile(rf.path, settings);
+        if (!mediaType) return null; // If not in a designated movie or TV folder, do NOT auto-fetch TMDB!
+
+        return { file: rf, mediaType };
+      })
+      .filter(Boolean) as { file: any; mediaType: 'movie' | 'tv' }[];
+
+    if (itemsNeedingTmdb.length === 0) return;
 
     let isMounted = true;
-    moviesNeedingTmdb.forEach(async (movie) => {
-      const tmdbRes = await fetchTmdbMetadata(movie.path, movie.name);
+    itemsNeedingTmdb.forEach(async ({ file, mediaType }) => {
+      const tmdbRes = await fetchTmdbMetadata(file.path, file.name, false, mediaType);
       if (isMounted && tmdbRes?.data) {
         setRawFiles((prev) => {
           let changed = false;
           const next = prev.map((f) => {
-            if (f.path === movie.path) {
+            if (f.path === file.path) {
               changed = true;
               return {
                 ...f,
@@ -206,7 +214,7 @@ export default function App() {
               size: JSON.stringify(tmdbRes.data, null, 2).length,
               mimeType: 'application/json',
               lastModified: tmdbRes.data.cachedAt || new Date().toISOString(),
-              endpoints: Array.isArray(movie.endpoints) ? movie.endpoints : ['ep-1'],
+              endpoints: Array.isArray(file.endpoints) ? file.endpoints : ['ep-1'],
             });
           }
 
@@ -218,7 +226,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [rawFiles, activeTab?.path]);
+  }, [rawFiles, activeTab?.path, settings]);
 
   // Save changes to localStorage
   useEffect(() => {

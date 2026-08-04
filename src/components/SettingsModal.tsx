@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Settings, Sliders, Moon, Sun, Monitor, Zap, Shield, Database, Terminal, Download } from 'lucide-react';
+import { X, Settings, Sliders, Moon, Sun, Monitor, Zap, Shield, Database, Terminal, Download, Film, Tv, FolderPlus } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface SettingsModalProps {
@@ -19,7 +19,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [form, setForm] = React.useState<AppSettings>({ ...settings });
+  const [form, setForm] = React.useState<AppSettings>({
+    ...settings,
+    movieDirectories: settings.movieDirectories || ['/Movies'],
+    tvShowDirectories: settings.tvShowDirectories || ['/TV-Shows'],
+  });
+
+  const [movieDirsText, setMovieDirsText] = React.useState<string>(
+    (settings.movieDirectories || ['/Movies']).join(', ')
+  );
+  const [tvDirsText, setTvDirsText] = React.useState<string>(
+    (settings.tvShowDirectories || ['/TV-Shows']).join(', ')
+  );
+
+  const handleMovieDirsChange = (text: string) => {
+    setMovieDirsText(text);
+    const parsed = text
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((p) => (p.startsWith('/') ? p : '/' + p));
+    setForm((prev) => ({ ...prev, movieDirectories: parsed }));
+  };
+
+  const handleTvDirsChange = (text: string) => {
+    setTvDirsText(text);
+    const parsed = text
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((p) => (p.startsWith('/') ? p : '/' + p));
+    setForm((prev) => ({ ...prev, tvShowDirectories: parsed }));
+  };
+
+  const addMoviePreset = (dir: string) => {
+    const current = (form.movieDirectories || []);
+    if (!current.includes(dir)) {
+      const next = [...current, dir];
+      setForm((prev) => ({ ...prev, movieDirectories: next }));
+      setMovieDirsText(next.join(', '));
+    }
+  };
+
+  const addTvPreset = (dir: string) => {
+    const current = (form.tvShowDirectories || []);
+    if (!current.includes(dir)) {
+      const next = [...current, dir];
+      setForm((prev) => ({ ...prev, tvShowDirectories: next }));
+      setTvDirsText(next.join(', '));
+    }
+  };
 
   const handleSave = () => {
     onSaveSettings(form);
@@ -163,6 +212,85 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 >
                   aria2c
                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* TMDB Metadata Directories Configuration */}
+          <div className="space-y-3 pt-2 border-t border-[#D8D2C9] dark:border-[#49454F]">
+            <div>
+              <label className="font-bold text-[#2C221E] dark:text-[#E6E1E5] flex items-center space-x-2">
+                <Film className="w-4 h-4 text-[#C85A17] dark:text-[#D0BCFF]" />
+                <span>TMDB Metadata Auto-Fetch Directories</span>
+              </label>
+              <p className="text-[11px] text-[#786C63] dark:text-[#CAC4D0] mt-0.5">
+                Configure specific directories to trigger TMDB metadata indexing. Files outside these directories will not fetch metadata automatically.
+              </p>
+            </div>
+
+            {/* Movies Directories */}
+            <div className="p-3 rounded-2xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#2C221E] dark:text-[#E6E1E5] flex items-center space-x-1.5">
+                  <Film className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Movie Directories</span>
+                </span>
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-medium">
+                  TMDB Movie API
+                </span>
+              </div>
+              <input
+                type="text"
+                value={movieDirsText}
+                onChange={(e) => handleMovieDirsChange(e.target.value)}
+                placeholder="/Movies, /Films, /Media/Movies"
+                className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-[#2B2930] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+              />
+              <div className="flex items-center space-x-1.5 flex-wrap pt-0.5">
+                <span className="text-[10px] text-[#786C63] dark:text-[#938F99]">Presets:</span>
+                {['/Movies', '/Films', '/Media/Movies'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => addMoviePreset(preset)}
+                    className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                  >
+                    + {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* TV-Shows Directories */}
+            <div className="p-3 rounded-2xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#2C221E] dark:text-[#E6E1E5] flex items-center space-x-1.5">
+                  <Tv className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>TV-Show Directories</span>
+                </span>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full font-medium">
+                  TMDB TV Show API
+                </span>
+              </div>
+              <input
+                type="text"
+                value={tvDirsText}
+                onChange={(e) => handleTvDirsChange(e.target.value)}
+                placeholder="/TV-Shows, /Series, /Shows"
+                className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-[#2B2930] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+              />
+              <div className="flex items-center space-x-1.5 flex-wrap pt-0.5">
+                <span className="text-[10px] text-[#786C63] dark:text-[#938F99]">Presets:</span>
+                {['/TV-Shows', '/Series', '/Shows'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => addTvPreset(preset)}
+                    className="px-2 py-0.5 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                  >
+                    + {preset}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -56,6 +56,7 @@ export interface TMDBMovieData {
   jsonFileName?: string;
   jsonFilePath?: string;
   source?: 'tmdb_api' | 'json_cache' | 'fallback_database';
+  mediaType?: 'movie' | 'tv';
 }
 
 export interface WebDavFile {
@@ -106,6 +107,8 @@ export interface AppSettings {
   mockServerEnabled: boolean;
   compactMode: boolean;
   downloadCommand?: string;
+  movieDirectories?: string[];
+  tvShowDirectories?: string[];
 }
 
 export interface SyncConflictInfo {

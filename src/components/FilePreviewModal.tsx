@@ -22,6 +22,7 @@ import {
   Tag,
   FolderOpen,
   HardDrive,
+  Tv,
 } from 'lucide-react';
 import { WebDavFile, TMDBMovieData, WebDavEndpoint, EndpointFileInfo, AppSettings } from '../types';
 import {
@@ -30,6 +31,7 @@ import {
   formatMediaInfo,
   isMovieFile,
   fetchTmdbMetadata,
+  getMediaTypeForFile,
   getEndpointFileFullUrl,
   formatDownloadCommand,
 } from '../lib/webdavEngine';
@@ -79,16 +81,19 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     setShowRawJson(false);
     setJsonRawContent(null);
 
-    // If movie file lacks TMDB data, attempt async fetch
-    if (file && isMovieFile(file) && !file.tmdbData) {
-      setIsRefreshingTmdb(true);
-      fetchTmdbMetadata(file.path, file.name, false).then((res) => {
-        if (res?.data) {
-          setTmdbData(res.data);
-          setTmdbJsonPath(res.jsonFilePath);
-        }
-        setIsRefreshingTmdb(false);
-      });
+    // If media file lacks TMDB data, check if it resides in a configured Movie or TV directory
+    if (file && isMovieFile(file) && !file.tmdbData && settings) {
+      const mediaType = getMediaTypeForFile(file.path, settings);
+      if (mediaType) {
+        setIsRefreshingTmdb(true);
+        fetchTmdbMetadata(file.path, file.name, false, mediaType).then((res) => {
+          if (res?.data) {
+            setTmdbData(res.data);
+            setTmdbJsonPath(res.jsonFilePath);
+          }
+          setIsRefreshingTmdb(false);
+        });
+      }
     }
 
     // If clicking a .json sidecar file directly, fetch its content
@@ -102,17 +107,18 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         })
         .catch(() => {});
     }
-  }, [file]);
+  }, [file, settings]);
 
   if (!file) return null;
 
   const isMovie = isMovieFile(file);
   const isJsonFile = file.name.endsWith('.json');
+  const mediaType = (settings ? getMediaTypeForFile(file.path, settings) : null) || tmdbData?.mediaType || 'movie';
 
   const handleRefreshTmdb = async () => {
     if (!file) return;
     setIsRefreshingTmdb(true);
-    const res = await fetchTmdbMetadata(file.path, file.name, true);
+    const res = await fetchTmdbMetadata(file.path, file.name, true, mediaType);
     if (res?.data) {
       setTmdbData(res.data);
       setTmdbJsonPath(res.jsonFilePath);
@@ -231,8 +237,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               <h3 className="font-bold text-base text-[#2C221E] dark:text-[#E6E1E5] truncate flex items-center space-x-2">
                 <span>{file.name}</span>
                 {isMovie && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C85A17]/15 dark:bg-[#381E72] text-[#C85A17] dark:text-[#D0BCFF] border border-[#C85A17]/30 dark:border-[#D0BCFF]/30">
-                    Movie / Media
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C85A17]/15 dark:bg-[#381E72] text-[#C85A17] dark:text-[#D0BCFF] border border-[#C85A17]/30 dark:border-[#D0BCFF]/30 inline-flex items-center space-x-1">
+                    {mediaType === 'tv' ? <Tv className="w-3 h-3" /> : <Film className="w-3 h-3" />}
+                    <span>{mediaType === 'tv' ? 'TV Show' : 'Movie'}</span>
                   </span>
                 )}
                 {isJsonFile && (
@@ -290,7 +297,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       <div className="flex items-center space-x-2">
                         <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                         <span className="text-[10px] font-bold tracking-wider uppercase text-amber-400">
-                          The Movie Database (TMDB)
+                          {mediaType === 'tv' ? 'The Movie Database (TMDB TV Show)' : 'The Movie Database (TMDB Movie)'}
                         </span>
                       </div>
                       <h3 className="text-xl font-bold leading-tight text-white drop-shadow-xs">

@@ -142,7 +142,7 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
               </div>
             </th>
 
-            <th className="p-3 text-center min-w-[180px] w-48">Actions</th>
+            <th className="p-3 text-center min-w-[250px] w-64">Actions</th>
           </tr>
         </thead>
 

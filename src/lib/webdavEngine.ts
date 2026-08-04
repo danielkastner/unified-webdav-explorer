@@ -14,6 +14,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   mockServerEnabled: true,
   compactMode: false,
   downloadCommand: 'curl -s -L -o "{LOCAL_PATH}" "{URL}"',
+  movieDirectories: ['/Movies'],
+  tvShowDirectories: ['/TV-Shows'],
 };
 
 // Initial Demo Endpoints
@@ -197,13 +199,59 @@ export async function fetchFolderData(endpoints: WebDavEndpoint[], folderPath: s
   return [];
 }
 
-// Fetch or load TMDB movie metadata sidecar JSON
-export async function fetchTmdbMetadata(filePath: string, filename: string, forceRefresh = false) {
+// Determine if a file path belongs to a configured Movie or TV Show directory
+export function getMediaTypeForFile(
+  filePath: string,
+  settings: AppSettings
+): 'movie' | 'tv' | null {
+  if (!filePath) return null;
+  const normPath = filePath.toLowerCase();
+
+  const movieDirs = settings.movieDirectories && settings.movieDirectories.length > 0
+    ? settings.movieDirectories
+    : ['/Movies'];
+
+  const tvDirs = settings.tvShowDirectories && settings.tvShowDirectories.length > 0
+    ? settings.tvShowDirectories
+    : ['/TV-Shows'];
+
+  // Check TV directories
+  const isTv = tvDirs.some((dir) => {
+    if (!dir) return false;
+    const normDir = dir.trim().toLowerCase();
+    if (normDir === '/') return false;
+    const cleanDir = normDir.endsWith('/') ? normDir.slice(0, -1) : normDir;
+    return normPath === cleanDir || normPath.startsWith(cleanDir + '/');
+  });
+
+  if (isTv) return 'tv';
+
+  // Check Movie directories
+  const isMovie = movieDirs.some((dir) => {
+    if (!dir) return false;
+    const normDir = dir.trim().toLowerCase();
+    if (normDir === '/') return false;
+    const cleanDir = normDir.endsWith('/') ? normDir.slice(0, -1) : normDir;
+    return normPath === cleanDir || normPath.startsWith(cleanDir + '/');
+  });
+
+  if (isMovie) return 'movie';
+
+  return null;
+}
+
+// Fetch or load TMDB movie or TV metadata sidecar JSON
+export async function fetchTmdbMetadata(
+  filePath: string,
+  filename: string,
+  forceRefresh = false,
+  mediaType: 'movie' | 'tv' = 'movie'
+) {
   try {
     const res = await fetch('/api/tmdb/fetch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filePath, filename, forceRefresh }),
+      body: JSON.stringify({ filePath, filename, forceRefresh, mediaType }),
     });
     if (res.ok) {
       const data = await res.json();
