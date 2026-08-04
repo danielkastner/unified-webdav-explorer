@@ -21,6 +21,7 @@ import {
   unifyEndpointFiles,
   getParentPath,
   getEndpointFileFullUrl,
+  getFileRating,
   INITIAL_ENDPOINTS,
 } from './lib/webdavEngine';
 import { Check, X } from 'lucide-react';
@@ -290,10 +291,17 @@ export default function App() {
       // Duplicates filter chip
       if (duplicatesOnly && !file.isDuplicate) return false;
 
-      // Type filter chip
+      // Type & Rating filter chip
       if (activeTab.filter !== 'all') {
-        if (file.isDirectory) return true; // Keep folders visible
-        if (file.fileType !== activeTab.filter) return false;
+        if (activeTab.filter === 'rating') {
+          if (file.isDirectory) return false;
+          const rating = getFileRating(file);
+          const minR = activeTab.minRating ?? 0;
+          if (rating <= 0 || rating < minR) return false;
+        } else {
+          if (file.isDirectory) return true; // Keep folders visible
+          if (file.fileType !== activeTab.filter) return false;
+        }
       }
 
       return true;
@@ -317,6 +325,9 @@ export default function App() {
       } else if (activeTab.sortBy === 'type') {
         valA = a.fileType;
         valB = b.fileType;
+      } else if (activeTab.sortBy === 'rating') {
+        valA = getFileRating(a);
+        valB = getFileRating(b);
       }
 
       if (valA < valB) return activeTab.sortOrder === 'asc' ? -1 : 1;
@@ -568,13 +579,21 @@ export default function App() {
           <FilterBar
             currentFilter={activeTab.filter}
             onSelectFilter={(f) => updateActiveTab({ filter: f })}
+            minRating={activeTab.minRating}
+            onChangeMinRating={(r) => updateActiveTab({ minRating: r })}
             searchQuery={activeTab.searchQuery}
             onSearchChange={(q) => updateActiveTab({ searchQuery: q })}
             duplicatesOnly={duplicatesOnly}
             onToggleDuplicatesOnly={() => setDuplicatesOnly(!duplicatesOnly)}
             sortBy={activeTab.sortBy}
             sortOrder={activeTab.sortOrder}
-            onChangeSort={(s) => updateActiveTab({ sortBy: s })}
+            onChangeSort={(s) => {
+              if (s === 'rating' && activeTab.sortBy !== 'rating') {
+                updateActiveTab({ sortBy: s, sortOrder: 'desc' });
+              } else {
+                updateActiveTab({ sortBy: s });
+              }
+            }}
             onToggleSortOrder={() => updateActiveTab({ sortOrder: activeTab.sortOrder === 'asc' ? 'desc' : 'asc' })}
             viewMode={activeTab.viewMode}
             onChangeViewMode={(v) => updateActiveTab({ viewMode: v })}

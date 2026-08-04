@@ -85,9 +85,10 @@ export interface TabItem {
   id: string;
   title: string;
   path: string;
-  filter: 'all' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive';
+  filter: 'all' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'rating';
+  minRating?: number;
   searchQuery: string;
-  sortBy: 'name' | 'size' | 'modified' | 'endpoints' | 'type';
+  sortBy: 'name' | 'size' | 'modified' | 'endpoints' | 'type' | 'rating';
   sortOrder: 'asc' | 'desc';
   viewMode: 'grid' | 'table' | 'cards';
 }

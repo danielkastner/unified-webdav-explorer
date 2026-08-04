@@ -22,7 +22,7 @@ import {
   Check
 } from 'lucide-react';
 import { WebDavFile, TabItem, WebDavEndpoint, EndpointFileInfo } from '../types';
-import { formatBytes, formatDate, formatMediaInfo, isMovieFile, getEndpointFileFullUrl } from '../lib/webdavEngine';
+import { formatBytes, formatDate, formatMediaInfo, isMovieFile, getEndpointFileFullUrl, getFileRating } from '../lib/webdavEngine';
 
 interface FileTableViewProps {
   files: WebDavFile[];
@@ -123,6 +123,16 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
             </th>
 
             <th
+              onClick={() => onHeaderSort('rating')}
+              className="p-3 hidden sm:table-cell cursor-pointer hover:text-[#C85A17] dark:hover:text-[#E6E1E5] transition-colors text-right"
+            >
+              <div className="flex items-center justify-end space-x-1">
+                <span>Rating</span>
+                {sortBy === 'rating' && <ArrowUpDown className="w-3 h-3 text-[#C85A17] dark:text-[#D0BCFF]" />}
+              </div>
+            </th>
+
+            <th
               onClick={() => onHeaderSort('size')}
               className="p-3 cursor-pointer hover:text-[#C85A17] dark:hover:text-[#E6E1E5] transition-colors text-right"
             >
@@ -212,6 +222,18 @@ export const FileTableView: React.FC<FileTableViewProps> = ({
                       </p>
                     </div>
                   </div>
+                </td>
+
+                {/* Rating */}
+                <td className="p-3 hidden sm:table-cell text-right font-semibold">
+                  {getFileRating(file) > 0 ? (
+                    <span className="inline-flex items-center space-x-1 bg-amber-500/15 dark:bg-amber-400/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full text-xs font-bold">
+                      <Star className="w-3 h-3 fill-amber-500 text-amber-500 dark:fill-amber-300 dark:text-amber-300" />
+                      <span>{getFileRating(file).toFixed(1)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[#A89F95] dark:text-[#49454F] text-[11px]">--</span>
+                  )}
                 </td>
 
                 {/* File Size */}

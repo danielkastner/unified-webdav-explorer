@@ -219,8 +219,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const handleCopyWatchCommand = async () => {
     if (!file) return;
 
-    const previewUrl = `${window.location.origin}/api/webdav/preview?path=${encodeURIComponent(file.path)}`;
-    const command = formatWatchCommand(settings?.watchCommand, previewUrl, file.name);
+    const command = formatWatchCommand(settings?.watchCommand, firstEndpointUrl, file.name);
 
     try {
       await navigator.clipboard.writeText(command);

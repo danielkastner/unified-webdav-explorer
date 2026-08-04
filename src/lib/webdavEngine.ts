@@ -461,6 +461,18 @@ export function unifyEndpointFiles(
   return Array.from(unifiedMap.values());
 }
 
+export function getFileRating(file: WebDavFile): number {
+  if (file.tmdbData?.vote_average !== undefined && file.tmdbData?.vote_average !== null && file.tmdbData.vote_average > 0) {
+    const num = Number(file.tmdbData.vote_average);
+    if (!isNaN(num)) return num;
+  }
+  if (file.mediaInfo?.rating) {
+    const num = parseFloat(file.mediaInfo.rating);
+    if (!isNaN(num)) return num;
+  }
+  return 0;
+}
+
 export function parseMediaInfoFromFileName(name: string, path: string): MediaInfo | undefined {
   if (!name || name.startsWith('.')) return undefined;
 

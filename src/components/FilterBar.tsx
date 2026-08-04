@@ -25,6 +25,8 @@ import { TabItem } from '../types';
 interface FilterBarProps {
   currentFilter: TabItem['filter'];
   onSelectFilter: (filter: TabItem['filter']) => void;
+  minRating?: number;
+  onChangeMinRating?: (minRating: number) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   duplicatesOnly: boolean;
@@ -46,6 +48,8 @@ interface FilterBarProps {
 export const FilterBar: React.FC<FilterBarProps> = ({
   currentFilter,
   onSelectFilter,
+  minRating,
+  onChangeMinRating,
   searchQuery,
   onSearchChange,
   duplicatesOnly,
@@ -65,6 +69,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 }) => {
   const filterChips: Array<{ key: TabItem['filter']; label: string; icon: React.ReactNode }> = [
     { key: 'all', label: 'All Items', icon: <Layers className="w-3.5 h-3.5" /> },
+    { key: 'rating', label: 'Rating', icon: <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 dark:fill-amber-300 dark:text-amber-400" /> },
     { key: 'document', label: 'Documents', icon: <FileText className="w-3.5 h-3.5" /> },
     { key: 'image', label: 'Images', icon: <ImageIcon className="w-3.5 h-3.5" /> },
     { key: 'video', label: 'Videos', icon: <Video className="w-3.5 h-3.5" /> },
@@ -112,6 +117,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               className="bg-transparent text-xs font-semibold px-2 py-1 text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none cursor-pointer"
             >
               <option value="name" className="bg-[#FAF8F5] dark:bg-[#2B2930] text-[#2C221E] dark:text-[#E6E1E5]">Sort: Name</option>
+              <option value="rating" className="bg-[#FAF8F5] dark:bg-[#2B2930] text-[#2C221E] dark:text-[#E6E1E5]">Sort: Rating (TMDB)</option>
               <option value="size" className="bg-[#FAF8F5] dark:bg-[#2B2930] text-[#2C221E] dark:text-[#E6E1E5]">Sort: Size</option>
               <option value="modified" className="bg-[#FAF8F5] dark:bg-[#2B2930] text-[#2C221E] dark:text-[#E6E1E5]">Sort: Modified</option>
               <option value="endpoints" className="bg-[#FAF8F5] dark:bg-[#2B2930] text-[#2C221E] dark:text-[#E6E1E5]">Sort: Endpoints</option>
@@ -186,6 +192,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </button>
             );
           })}
+
+          {/* Rating Min Threshold Pills when Rating Filter is Active */}
+          {currentFilter === 'rating' && (
+            <div className="flex items-center space-x-1.5 pl-2 border-l border-[#D8D2C9] dark:border-[#49454F] animate-fadeIn">
+              <span className="text-[11px] font-semibold text-[#786C63] dark:text-[#CAC4D0] shrink-0">Min Rating:</span>
+              {[0, 6, 7, 8, 9].map((ratingVal) => (
+                <button
+                  key={ratingVal}
+                  onClick={() => onChangeMinRating?.(ratingVal)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition-all ${
+                    (minRating ?? 0) === ratingVal
+                      ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-900 shadow-xs scale-105'
+                      : 'bg-[#DFD9CE] text-[#6E6259] hover:bg-[#D0C8BD] dark:bg-[#49454F] dark:text-[#CAC4D0]'
+                  }`}
+                >
+                  {ratingVal === 0 ? 'All Rated' : `★ ${ratingVal}+`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Duplicates Only Filter Chip */}
