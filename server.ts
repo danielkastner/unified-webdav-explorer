@@ -909,13 +909,13 @@ app.post("/api/tmdb/fetch", async (req, res) => {
             };
           }
         } else {
-          console.warn('[TMDB Fetch Warning] No Results found', tmdbJson);
+          console.warn(`[TMDB Fetch Warning] No Results found for '${cleanTitle} (${year})'`, tmdbJson);
         }
       } else {
-        console.warn('[TMDB Fetch Warning] API Lookup was NOT OK', tmdbRes);
+        console.warn(`[TMDB Fetch Warning] API Lookup was NOT OK for '${cleanTitle} (${year})'`, tmdbRes);
       }
     } catch (err) {
-      console.warn('[TMDB Fetch Warning] API lookup failed, switching to local DB fallback', err);
+      console.warn(`[TMDB Fetch Warning] API lookup failed, switching to local DB fallback for '${cleanTitle} (${year})'`, err);
     }
   }
 
