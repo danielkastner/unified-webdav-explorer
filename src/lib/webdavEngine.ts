@@ -242,18 +242,48 @@ export function getMediaTypeForFile(
   return null;
 }
 
+export function parseMovieTitleAndYear(filename: string): { cleanTitle: string; year?: string } {
+  const nameWithoutExt = filename.replace(/\.[a-zA-Z0-9]+$/, '');
+  let year: string | undefined = undefined;
+  let cleaned = '';
+
+  const yearMatch = nameWithoutExt.match(/(19\d\d|20\d\d)/);
+  if (yearMatch && yearMatch.index !== undefined) {
+    year = yearMatch[1];
+    const substringBeforeYear = nameWithoutExt.substring(0, yearMatch.index);
+    cleaned = cleanTitleString(substringBeforeYear);
+  } else {
+    cleaned = cleanTitleString(nameWithoutExt);
+  }
+
+  return { cleanTitle: cleaned || nameWithoutExt, year };
+}
+
+export function cleanTitleString(str: string): string {
+  return str
+    .replace(/(S\d\d?E\d\d?|S\d\d?|E\d\d?|\d+x\d+)/gi, ' ')
+    .replace(/(1080p|720p|2160p|4k|hdr|web|web-dl|webrip|bluray|h264|h265|x264|x265|aac|ac3|5\.1|dl|uhd|bdrip|remux|dts|atmos|yify|rarbg|unrated|extended|remastered|remaster|repack|proper|directors|director|theatrical|edition|cut|ld)/gi, ' ')
+    .replace(/(WOTT|FuN|LDO)/gi, ' ')
+    .replace(/(German|English)/gi, ' ')
+    .replace(/[._-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Fetch or load TMDB movie or TV metadata sidecar JSON
 export async function fetchTmdbMetadata(
   filePath: string,
   filename: string,
   forceRefresh = false,
-  mediaType: 'movie' | 'tv' = 'movie'
+  mediaType: 'movie' | 'tv' = 'movie',
+  searchTitle?: string,
+  searchYear?: string
 ) {
   try {
     const res = await fetch('/api/tmdb/fetch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filePath, filename, forceRefresh, mediaType }),
+      body: JSON.stringify({ filePath, filename, forceRefresh, mediaType, searchTitle, searchYear }),
     });
     if (res.ok) {
       const data = await res.json();

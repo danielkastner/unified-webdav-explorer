@@ -31,6 +31,7 @@ import {
   formatMediaInfo,
   isMovieFile,
   fetchTmdbMetadata,
+  parseMovieTitleAndYear,
   getMediaTypeForFile,
   getEndpointFileFullUrl,
   formatDownloadCommand,
@@ -64,6 +65,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [tmdbData, setTmdbData] = useState<TMDBMovieData | null>(file?.tmdbData || null);
   const [tmdbJsonPath, setTmdbJsonPath] = useState<string | null>(file?.tmdbJsonPath || null);
   const [jsonRawContent, setJsonRawContent] = useState<string | null>(null);
+
+  // TMDB Re-query Popup Modal State
+  const [isRequeryModalOpen, setIsRequeryModalOpen] = useState(false);
+  const [requeryTitle, setRequeryTitle] = useState('');
+  const [requeryYear, setRequeryYear] = useState('');
+  const [requeryMediaType, setRequeryMediaType] = useState<'movie' | 'tv'>('movie');
+  const [requeryError, setRequeryError] = useState<string | null>(null);
 
   // File Chooser Dialog Modal State for Downloads
   const [isSavePathModalOpen, setIsSavePathModalOpen] = useState(false);
@@ -117,14 +125,38 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const isJsonFile = file.name.endsWith('.json');
   const mediaType = (settings ? getMediaTypeForFile(file.path, settings) : null) || tmdbData?.mediaType || 'movie';
 
-  const handleRefreshTmdb = async () => {
+  const handleOpenRequeryModal = () => {
+    if (!file) return;
+    const parsed = parseMovieTitleAndYear(file.name);
+    setRequeryTitle(parsed.cleanTitle);
+    setRequeryYear(parsed.year || '');
+    setRequeryMediaType((tmdbData?.mediaType as 'movie' | 'tv') || mediaType || 'movie');
+    setRequeryError(null);
+    setIsRequeryModalOpen(true);
+  };
+
+  const handleExecuteRequery = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!file) return;
     setIsRefreshingTmdb(true);
-    const res = await fetchTmdbMetadata(file.path, file.name, true, mediaType);
+    setRequeryError(null);
+
+    const res = await fetchTmdbMetadata(
+      file.path,
+      file.name,
+      true,
+      requeryMediaType,
+      requeryTitle,
+      requeryYear
+    );
+
     if (res?.data) {
       setTmdbData(res.data);
       setTmdbJsonPath(res.jsonFilePath);
       setJsonRawContent(JSON.stringify(res.data, null, 2));
+      setIsRequeryModalOpen(false);
+    } else {
+      setRequeryError(`No metadata found on TMDB for '${requeryTitle}' ${requeryYear ? `(${requeryYear})` : ''}.`);
     }
     setIsRefreshingTmdb(false);
   };
@@ -391,7 +423,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={handleRefreshTmdb}
+                        onClick={handleOpenRequeryModal}
                         disabled={isRefreshingTmdb}
                         className="flex items-center space-x-1 text-[10px] px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition-colors cursor-pointer"
                       >
@@ -843,6 +875,132 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 <span>Run Download Command</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* TMDB Re-query Popup Modal */}
+      {isRequeryModalOpen && (
+        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[#FAF8F5] dark:bg-[#2B2930] border border-[#D8D2C9] dark:border-[#49454F] rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4 text-[#2C221E] dark:text-[#E6E1E5]">
+            <div className="flex items-center justify-between border-b border-[#D8D2C9] dark:border-[#49454F] pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#2C221E] dark:text-[#E6E1E5]">
+                    Re-query TMDB
+                  </h3>
+                  <p className="text-[11px] text-[#786C63] dark:text-[#CAC4D0] truncate max-w-[260px]">
+                    {file.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRequeryModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-[#DFD9CE] dark:hover:bg-[#49454F] text-[#786C63] dark:text-[#CAC4D0] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteRequery} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1 text-[#2C221E] dark:text-[#E6E1E5]">
+                  Title for Search Query
+                </label>
+                <input
+                  type="text"
+                  value={requeryTitle}
+                  onChange={(e) => setRequeryTitle(e.target.value)}
+                  placeholder="e.g. Inception"
+                  required
+                  className="w-full px-3 py-2 rounded-xl border border-[#D8D2C9] dark:border-[#49454F] bg-white dark:bg-[#1C1B1F] text-xs focus:outline-none focus:ring-2 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+                />
+                <p className="text-[10px] text-[#786C63] dark:text-[#CAC4D0] mt-1">
+                  Default from filename: <span className="font-mono text-amber-600 dark:text-amber-400">{parseMovieTitleAndYear(file.name).cleanTitle}</span>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1 text-[#2C221E] dark:text-[#E6E1E5]">
+                  Release Year (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={requeryYear}
+                  onChange={(e) => setRequeryYear(e.target.value)}
+                  placeholder="e.g. 2010"
+                  className="w-full px-3 py-2 rounded-xl border border-[#D8D2C9] dark:border-[#49454F] bg-white dark:bg-[#1C1B1F] text-xs focus:outline-none focus:ring-2 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+                />
+                {parseMovieTitleAndYear(file.name).year && (
+                  <p className="text-[10px] text-[#786C63] dark:text-[#CAC4D0] mt-1">
+                    Default year from filename: <span className="font-mono text-amber-600 dark:text-amber-400">{parseMovieTitleAndYear(file.name).year}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1 text-[#2C221E] dark:text-[#E6E1E5]">
+                  Media Category
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRequeryMediaType('movie')}
+                    className={`flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl border text-xs font-medium cursor-pointer transition-colors ${
+                      requeryMediaType === 'movie'
+                        ? 'bg-[#C85A17] text-white border-[#C85A17] dark:bg-[#D0BCFF] dark:text-[#381E72] dark:border-[#D0BCFF]'
+                        : 'bg-white dark:bg-[#1C1B1F] border-[#D8D2C9] dark:border-[#49454F] text-[#2C221E] dark:text-[#E6E1E5]'
+                    }`}
+                  >
+                    <Film className="w-3.5 h-3.5" />
+                    <span>Movie</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRequeryMediaType('tv')}
+                    className={`flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl border text-xs font-medium cursor-pointer transition-colors ${
+                      requeryMediaType === 'tv'
+                        ? 'bg-[#C85A17] text-white border-[#C85A17] dark:bg-[#D0BCFF] dark:text-[#381E72] dark:border-[#D0BCFF]'
+                        : 'bg-white dark:bg-[#1C1B1F] border-[#D8D2C9] dark:border-[#49454F] text-[#2C221E] dark:text-[#E6E1E5]'
+                    }`}
+                  >
+                    <Tv className="w-3.5 h-3.5" />
+                    <span>TV Show</span>
+                  </button>
+                </div>
+              </div>
+
+              {requeryError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
+                  {requeryError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[#D8D2C9] dark:border-[#49454F]">
+                <button
+                  type="button"
+                  onClick={() => setIsRequeryModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium border border-[#D8D2C9] dark:border-[#49454F] bg-white dark:bg-[#1C1B1F] hover:bg-[#F5F2ED] dark:hover:bg-[#312E37] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRefreshingTmdb || !requeryTitle.trim()}
+                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[#C85A17] hover:bg-[#A84A12] text-white dark:bg-[#D0BCFF] dark:hover:bg-[#E8DEF8] dark:text-[#381E72] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isRefreshingTmdb ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  <span>Query TMDB</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

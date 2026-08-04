@@ -765,27 +765,28 @@ function parseMovieTitleAndYear(filename: string): { cleanTitle: string; year?: 
   if (yearMatch && yearMatch.index !== undefined) {
     year = yearMatch[1];
     const substringBeforeYear = nameWithoutExt.substring(0, yearMatch.index);
-    cleaned = substringBeforeYear
-      .replace(/[._-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    cleaned = cleanTitleString(substringBeforeYear);
   } else {
-    cleaned = nameWithoutExt
-      .replace(/(S\d\d?E\d\d?|S\d\d?|E\d\d?|\d+x\d+)/gi, ' ')
-      .replace(/(1080p|720p|2160p|4k|hdr|web|web-dl|webrip|bluray|h264|h265|x264|x265|aac|ac3|5\.1|dl|uhd|bdrip|remux|dts|atmos|yify|rarbg|unrated|extended|cut|ld)/gi, ' ')
-      .replace(/(WOTT|FuN|LDO)/gi, '')
-      .replace(/(German|English)/gi, '')
-      .replace(/[._-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    cleaned = cleanTitleString(nameWithoutExt);
   }
 
   return { cleanTitle: cleaned || nameWithoutExt, year };
 }
 
+function cleanTitleString(str: string): string {
+  return str
+    .replace(/(S\d\d?E\d\d?|S\d\d?|E\d\d?|\d+x\d+)/gi, ' ')
+    .replace(/(1080p|720p|2160p|4k|hdr|web|web-dl|webrip|bluray|h264|h265|x264|x265|aac|ac3|5\.1|dl|uhd|bdrip|remux|dts|atmos|yify|rarbg|unrated|extended|remastered|remaster|repack|proper|directors|director|theatrical|edition|cut|ld)/gi, ' ')
+    .replace(/(WOTT|FuN|LDO)/gi, ' ')
+    .replace(/(German|English)/gi, ' ')
+    .replace(/[._-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // 6. TMDB Fetch & JSON Sidecar Generator Endpoint (Supports Movies & TV Shows)
 app.post("/api/tmdb/fetch", async (req, res) => {
-  const { filePath, filename, forceRefresh, mediaType = 'movie' } = req.body;
+  const { filePath, filename, forceRefresh, mediaType = 'movie', searchTitle, searchYear } = req.body;
 
   if (!filename) {
     return res.status(400).json({ success: false, error: "Filename is required" });
@@ -828,7 +829,13 @@ app.post("/api/tmdb/fetch", async (req, res) => {
     }
   }
 
-  const { cleanTitle, year } = parseMovieTitleAndYear(filename);
+  const parsed = parseMovieTitleAndYear(filename);
+  const cleanTitle = (searchTitle !== undefined && searchTitle !== null && String(searchTitle).trim() !== '')
+    ? String(searchTitle).trim()
+    : parsed.cleanTitle;
+  const year = (searchYear !== undefined && searchYear !== null && String(searchYear).trim() !== '')
+    ? String(searchYear).trim()
+    : parsed.year;
   let movieData: any = null;
   let source: 'tmdb_api' | 'json_cache' | 'fallback_database' = 'fallback_database';
 
