@@ -316,7 +316,9 @@ export function unifyEndpointFiles(
   settings: AppSettings
 ): WebDavFile[] {
   const activeEndpointMap = new Map<string, WebDavEndpoint>();
-  endpoints.filter((ep) => ep.enabled).forEach((ep) => activeEndpointMap.set(ep.id, ep));
+  endpoints
+    .filter((ep) => ep.enabled && (settings.mockServerEnabled || !ep.isDemo))
+    .forEach((ep) => activeEndpointMap.set(ep.id, ep));
 
   // Pre-pass: Attach metadata from companion JSON files onto their corresponding video files if present
   rawFiles.forEach((raw) => {

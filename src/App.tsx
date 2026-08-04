@@ -103,7 +103,8 @@ export default function App() {
   // Load files from backend API or demo generator
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    const { files, statuses } = await fetchEndpointsData(endpoints);
+    const endpointsToFetch = endpoints.filter((ep) => settings.mockServerEnabled || !ep.isDemo);
+    const { files, statuses } = await fetchEndpointsData(endpointsToFetch);
     setRawFiles(files);
 
     if (statuses && Object.keys(statuses).length > 0) {
@@ -126,7 +127,7 @@ export default function App() {
     }
 
     setIsLoading(false);
-  }, [endpoints]);
+  }, [endpoints, settings.mockServerEnabled]);
 
   useEffect(() => {
     loadData();
@@ -135,7 +136,8 @@ export default function App() {
   // Dynamically fetch folder contents when navigating into a subfolder
   const loadFolder = useCallback(async (folderPath: string) => {
     if (!folderPath || folderPath === '/') return;
-    const newFiles = await fetchFolderData(endpoints, folderPath);
+    const endpointsToFetch = endpoints.filter((ep) => settings.mockServerEnabled || !ep.isDemo);
+    const newFiles = await fetchFolderData(endpointsToFetch, folderPath);
     if (newFiles.length > 0) {
       setRawFiles((prev) => {
         const existingKeys = new Set(
@@ -148,7 +150,7 @@ export default function App() {
         return [...prev, ...toAdd];
       });
     }
-  }, [endpoints]);
+  }, [endpoints, settings.mockServerEnabled]);
 
   useEffect(() => {
     if (activeTab?.path && activeTab.path !== '/') {
@@ -241,10 +243,15 @@ export default function App() {
     saveFavoritesToStorage(favorites);
   }, [favorites]);
 
+  // Compute visible endpoints according to mockServerEnabled setting
+  const visibleEndpoints = useMemo(() => {
+    return endpoints.filter((ep) => settings.mockServerEnabled || !ep.isDemo);
+  }, [endpoints, settings.mockServerEnabled]);
+
   // Compute Unified Merged Files Tree
   const unifiedFiles = useMemo(() => {
-    return unifyEndpointFiles(rawFiles, endpoints, settings);
-  }, [rawFiles, endpoints, settings]);
+    return unifyEndpointFiles(rawFiles, visibleEndpoints, settings);
+  }, [rawFiles, visibleEndpoints, settings]);
 
   // Count overall duplicates for metrics
   const duplicateCount = useMemo(() => {
@@ -437,7 +444,7 @@ export default function App() {
     const newPath = `${cleanParent}/${folderName}`;
 
     // Add new folder to rawFiles for active enabled endpoints
-    const activeEpIds = endpoints.filter((e) => e.enabled).map((e) => e.id);
+    const activeEpIds = visibleEndpoints.filter((e) => e.enabled).map((e) => e.id);
     const newFolderRaw = {
       path: newPath,
       name: folderName,
@@ -502,7 +509,7 @@ export default function App() {
     <div className="h-screen w-screen flex flex-col bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-hidden font-sans">
       {/* 1. Desktop Titlebar */}
       <DesktopTitleBar
-        endpoints={endpoints}
+        endpoints={visibleEndpoints}
         settings={settings}
         onUpdateSettings={(up) => setSettings({ ...settings, ...up })}
         onOpenEndpointsModal={() => setIsEndpointsModalOpen(true)}
@@ -516,7 +523,7 @@ export default function App() {
         <NavigationDrawer
           isExpanded={isDrawerExpanded}
           onToggleExpand={() => setIsDrawerExpanded(!isDrawerExpanded)}
-          endpoints={endpoints}
+          endpoints={visibleEndpoints}
           favorites={favorites}
           activePath={activeTab.path}
           onNavigate={handleNavigatePath}
@@ -595,7 +602,7 @@ export default function App() {
               <FileTableView
                 files={activeDirectoryFiles}
                 selectedIds={selectedFileIds}
-                endpoints={endpoints}
+                endpoints={visibleEndpoints}
                 onToggleSelect={handleToggleSelectFile}
                 onToggleSelectAll={handleToggleSelectAll}
                 onNavigateFolder={handleNavigatePath}
@@ -619,7 +626,7 @@ export default function App() {
               <FileGridView
                 files={activeDirectoryFiles}
                 selectedIds={selectedFileIds}
-                endpoints={endpoints}
+                endpoints={visibleEndpoints}
                 onToggleSelect={handleToggleSelectFile}
                 onNavigateFolder={handleNavigatePath}
                 onOpenFilePreview={(file) => setPreviewFile(file)}
@@ -633,7 +640,7 @@ export default function App() {
               <FileCardsView
                 files={activeDirectoryFiles}
                 selectedIds={selectedFileIds}
-                endpoints={endpoints}
+                endpoints={visibleEndpoints}
                 onToggleSelect={handleToggleSelectFile}
                 onNavigateFolder={handleNavigatePath}
                 onOpenFilePreview={(file) => setPreviewFile(file)}
@@ -652,7 +659,7 @@ export default function App() {
       <EndpointManagerModal
         isOpen={isEndpointsModalOpen}
         onClose={() => setIsEndpointsModalOpen(false)}
-        endpoints={endpoints}
+        endpoints={visibleEndpoints}
         onAddEndpoint={handleAddEndpoint}
         onUpdateEndpoint={handleUpdateEndpoint}
         onDeleteEndpoint={handleDeleteEndpoint}
@@ -670,7 +677,7 @@ export default function App() {
 
       <FilePreviewModal
         file={previewFile}
-        endpoints={endpoints}
+        endpoints={visibleEndpoints}
         settings={settings}
         onClose={() => setPreviewFile(null)}
         onDownload={handleDownloadFile}
@@ -696,7 +703,7 @@ export default function App() {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         currentPath={activeTab.path}
-        endpoints={endpoints}
+        endpoints={visibleEndpoints}
         onUploadFiles={handleUploadFiles}
       />
 

@@ -5,10 +5,10 @@ let mainWindow = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    width: 1920,
+    height: 1080,
+    minWidth: 1280,
+    minHeight: 800,
     title: 'Unified WebDAV Explorer',
     backgroundColor: '#1C1B1F',
     frame: true,
