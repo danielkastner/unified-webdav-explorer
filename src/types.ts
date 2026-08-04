@@ -107,6 +107,7 @@ export interface AppSettings {
   mockServerEnabled: boolean;
   compactMode: boolean;
   downloadCommand?: string;
+  watchCommand?: string;
   movieDirectories?: string[];
   tvShowDirectories?: string[];
 }

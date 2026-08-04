@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   mockServerEnabled: true,
   compactMode: false,
   downloadCommand: 'curl -s -L -o "{LOCAL_PATH}" "{URL}"',
+  watchCommand: 'vlc "{URL}" --title "{TITLE}"',
   movieDirectories: ['/Movies'],
   tvShowDirectories: ['/TV-Shows'],
 };
@@ -558,6 +559,46 @@ export function formatDownloadCommand(
     result = `${result} "${localPath}"`;
   } else if (!urlReplaced) {
     result = `${result} "${fileUrl}"`;
+  }
+
+  return result;
+}
+
+export function formatWatchCommand(
+  template: string | undefined,
+  previewUrl: string,
+  title: string
+): string {
+  const baseTemplate = template && template.trim() !== ''
+    ? template
+    : 'vlc "{URL}" --title "{TITLE}"';
+
+  let result = baseTemplate;
+  let urlReplaced = false;
+
+  if (result.includes('{URL}')) {
+    result = result.replaceAll('{URL}', previewUrl);
+    urlReplaced = true;
+  } else if (result.includes('$URL')) {
+    result = result.replaceAll('$URL', previewUrl);
+    urlReplaced = true;
+  } else if (result.includes('{url}')) {
+    result = result.replaceAll('{url}', previewUrl);
+    urlReplaced = true;
+  }
+
+  if (result.includes('{TITLE}')) {
+    result = result.replaceAll('{TITLE}', title);
+  } else if (result.includes('{NAME}')) {
+    result = result.replaceAll('{NAME}', title);
+  } else if (result.includes('$TITLE')) {
+    result = result.replaceAll('$TITLE', title);
+  } else if (result.includes('{title}')) {
+    result = result.replaceAll('{title}', title);
+  }
+
+  if (!urlReplaced) {
+    result = `${result} "${previewUrl}"`;
   }
 
   return result;

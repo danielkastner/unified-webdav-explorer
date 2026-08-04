@@ -34,6 +34,7 @@ import {
   getMediaTypeForFile,
   getEndpointFileFullUrl,
   formatDownloadCommand,
+  formatWatchCommand,
 } from '../lib/webdavEngine';
 
 interface FilePreviewModalProps {
@@ -56,6 +57,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [copiedEpId, setCopiedEpId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
+  const [copiedWatchCmd, setCopiedWatchCmd] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [isRefreshingTmdb, setIsRefreshingTmdb] = useState(false);
@@ -176,9 +178,39 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       return;
     }
 
+    if (action === 'watch') {
+      await handleCopyWatchCommand();
+      return;
+    }
+  };
+
+  const handleCopyWatchCommand = async () => {
+    if (!file) return;
+
     const previewUrl = `${window.location.origin}/api/webdav/preview?path=${encodeURIComponent(file.path)}`;
-    const command = `vlc "${previewUrl}" --title "${file.name}"`;
-    await dispatchShellCommand(command, 'watch');
+    const command = formatWatchCommand(settings?.watchCommand, previewUrl, file.name);
+
+    try {
+      await navigator.clipboard.writeText(command);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = command;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+
+    setCopiedWatchCmd(true);
+    setTimeout(() => setCopiedWatchCmd(false), 3000);
+
+    setShellLog({
+      command,
+      action: 'watch',
+      stdout: `[CLIPBOARD] Watch command copied to clipboard!\n\nCommand:\n$ ${command}\n\nPaste this command into your local terminal or video player to stream directly.`,
+      stderr: '',
+      exitCode: 0,
+    });
   };
 
   const dispatchShellCommand = async (command: string, action: 'download' | 'watch') => {
@@ -486,13 +518,15 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 </span>
               </button>
 
-              {/* Action 2: Watch Movie via Bash (Enabled ONLY for Movies) */}
+              {/* Action 2: Watch / Stream Movie via Clipboard */}
               <button
                 onClick={() => handleExecuteShell('watch')}
-                disabled={!isMovie || isExecuting}
+                disabled={!isMovie}
                 className={`p-3 rounded-2xl border flex flex-col items-start space-y-1 text-left transition-all shadow-xs group ${
                   isMovie
-                    ? 'border-[#C85A17] dark:border-[#D0BCFF] bg-[#C85A17]/10 dark:bg-[#381E72]/40 hover:bg-[#C85A17]/20 dark:hover:bg-[#381E72]/70 text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer'
+                    ? copiedWatchCmd
+                      ? 'border-emerald-500 bg-emerald-500/15 dark:bg-emerald-500/20 text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer ring-1 ring-emerald-500'
+                      : 'border-[#C85A17] dark:border-[#D0BCFF] bg-[#C85A17]/10 dark:bg-[#381E72]/40 hover:bg-[#C85A17]/20 dark:hover:bg-[#381E72]/70 text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer'
                     : 'border-[#D8D2C9] dark:border-[#49454F] bg-[#E7E2DB]/30 dark:bg-[#1C1B1F]/40 text-[#A0958C] dark:text-[#6E6B73] cursor-not-allowed opacity-60'
                 }`}
               >
@@ -500,20 +534,30 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   <div
                     className={`p-1.5 rounded-xl transition-transform ${
                       isMovie
-                        ? 'bg-[#C85A17] dark:bg-[#D0BCFF] text-white dark:text-[#381E72] group-hover:scale-105'
+                        ? copiedWatchCmd
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-[#C85A17] dark:bg-[#D0BCFF] text-white dark:text-[#381E72] group-hover:scale-105'
                         : 'bg-[#D8D2C9] dark:bg-[#3B383E] text-[#A0958C] dark:text-[#6E6B73]'
                     }`}
                   >
-                    <Play className="w-4 h-4 fill-current" />
+                    {copiedWatchCmd ? (
+                      <Check className="w-4 h-4 text-white" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
                   </div>
                   <span className="text-[10px] font-mono">
-                    {isMovie ? 'vlc / player' : 'Disabled'}
+                    {isMovie ? (settings?.watchCommand ? settings.watchCommand.split(' ')[0] : 'vlc') : 'Disabled'}
                   </span>
                 </div>
-                <span className="font-semibold text-xs pt-1">Watch Movie</span>
-                <span className="text-[10px]">
+                <span className="font-semibold text-xs pt-1 flex items-center space-x-1">
+                  <span>{copiedWatchCmd ? 'Copied Watch Cmd!' : 'Watch Movie / Stream'}</span>
+                </span>
+                <span className="text-[10px] text-[#786C63] dark:text-[#CAC4D0]">
                   {isMovie
-                    ? 'Launches video stream in Bash player'
+                    ? copiedWatchCmd
+                      ? 'Copied player command to clipboard!'
+                      : 'Copies stream command to clipboard'
                     : 'Disabled (Movie files only)'}
                 </span>
               </button>

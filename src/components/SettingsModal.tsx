@@ -307,6 +307,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Configurable Watch / Streaming Command */}
+              <div className="space-y-2 pt-3 border-t border-[#D8D2C9] dark:border-[#49454F]">
+                <div className="flex items-center space-x-2">
+                  <Film className="w-4 h-4 text-[#C85A17] dark:text-[#D0BCFF]" />
+                  <label className="font-bold text-[#2C221E] dark:text-[#E6E1E5] text-sm">
+                    Watch / Stream Command Template
+                  </label>
+                </div>
+                <p className="text-xs text-[#786C63] dark:text-[#CAC4D0] leading-relaxed">
+                  Configurable command template copied to clipboard when clicking "Watch Movie / Stream".
+                  Use <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px]">{`{URL}`}</code> for the HTTP video preview stream link and <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-[10px]">{`{TITLE}`}</code> for movie title.
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  <input
+                    type="text"
+                    value={form.watchCommand ?? 'vlc "{URL}" --title "{TITLE}"'}
+                    onChange={(e) => setForm({ ...form, watchCommand: e.target.value })}
+                    placeholder='vlc "{URL}" --title "{TITLE}"'
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+                  />
+
+                  <div className="flex items-center space-x-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-medium text-[#786C63] dark:text-[#938F99]">Player Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, watchCommand: 'vlc "{URL}" --title "{TITLE}"' })}
+                      className="px-2.5 py-1 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono font-semibold text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                    >
+                      vlc
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, watchCommand: 'mpv --title="{TITLE}" "{URL}"' })}
+                      className="px-2.5 py-1 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono font-semibold text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                    >
+                      mpv
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, watchCommand: 'iina "{URL}"' })}
+                      className="px-2.5 py-1 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono font-semibold text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                    >
+                      iina (macOS)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, watchCommand: 'ffplay -window_title "{TITLE}" "{URL}"' })}
+                      className="px-2.5 py-1 rounded-lg bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[10px] font-mono font-semibold text-[#2C221E] dark:text-[#E6E1E5] cursor-pointer"
+                    >
+                      ffplay
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
