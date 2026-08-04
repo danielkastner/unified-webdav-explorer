@@ -16,6 +16,7 @@ import {
   FolderPlus,
   Palette,
   RefreshCw,
+  Clock,
 } from 'lucide-react';
 import { AppSettings } from '../types';
 
@@ -360,6 +361,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     >
                       ffplay
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Configurable Shell Command Timeout */}
+              <div className="space-y-2 pt-3 border-t border-[#D8D2C9] dark:border-[#49454F]">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-[#C85A17] dark:text-[#D0BCFF]" />
+                  <label className="font-bold text-[#2C221E] dark:text-[#E6E1E5] text-sm">
+                    Shell Command Execution Timeout
+                  </label>
+                </div>
+                <p className="text-xs text-[#786C63] dark:text-[#CAC4D0] leading-relaxed">
+                  Maximum allowed execution duration before a long-running download or shell process is automatically killed by the system. (Default: 5 minutes)
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-1">
+                      <div className="relative flex items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max="120"
+                          value={Math.round((form.execTimeoutSeconds ?? 300) / 60)}
+                          onChange={(e) => {
+                            const mins = Math.max(1, parseInt(e.target.value) || 1);
+                            setForm({ ...form, execTimeoutSeconds: mins * 60 });
+                          }}
+                          className="w-full px-3 py-2 rounded-xl bg-[#FAF8F5] dark:bg-[#1C1B1F] border border-[#D8D2C9] dark:border-[#49454F] font-mono text-xs text-[#2C221E] dark:text-[#E6E1E5] focus:outline-none focus:ring-1 focus:ring-[#C85A17] dark:focus:ring-[#D0BCFF]"
+                        />
+                        <span className="absolute right-3 text-xs text-[#786C63] dark:text-[#938F99] pointer-events-none font-medium">
+                          Minutes ({form.execTimeoutSeconds ?? 300}s)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-medium text-[#786C63] dark:text-[#938F99]">Presets:</span>
+                    {[
+                      { mins: 1, label: '1 min' },
+                      { mins: 5, label: '5 min (Default)' },
+                      { mins: 10, label: '10 min' },
+                      { mins: 15, label: '15 min' },
+                      { mins: 30, label: '30 min' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.mins}
+                        type="button"
+                        onClick={() => setForm({ ...form, execTimeoutSeconds: preset.mins * 60 })}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold cursor-pointer transition-colors ${
+                          (form.execTimeoutSeconds ?? 300) === preset.mins * 60
+                            ? 'bg-[#C85A17] text-white dark:bg-[#D0BCFF] dark:text-[#381E72]'
+                            : 'bg-[#E7E2DB] dark:bg-[#3B383E] hover:bg-[#D8D2C9] dark:hover:bg-[#49454F] text-[#2C221E] dark:text-[#E6E1E5]'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

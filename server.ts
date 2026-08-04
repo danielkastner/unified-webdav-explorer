@@ -561,15 +561,16 @@ app.get(["/api/webdav/file", "/api/webdav/download"], (req, res) => {
 
 // 5. Bash Shell Execution Endpoint for Electron / WebDAV Actions
 app.post("/api/shell/exec", (req, res) => {
-  const { command, action, path: filePath, name: fileName } = req.body;
+  const { command, action, path: filePath, name: fileName, timeout } = req.body;
   if (!command) {
     return res.status(400).json({ success: false, error: "Command string is required" });
   }
 
   const sanitizedCmd = command.trim();
   const timestamp = new Date().toLocaleTimeString();
+  const execTimeout = (typeof timeout === 'number' && timeout > 0) ? timeout : 5 * 60 * 1000;
 
-  exec(sanitizedCmd, { shell: "/bin/bash", timeout: 5 * 60 * 1000 }, (error, stdout, stderr) => {
+  exec(sanitizedCmd, { shell: "/bin/bash", timeout: execTimeout }, (error, stdout, stderr) => {
     if (error) {
       return res.json({
         success: true,

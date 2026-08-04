@@ -231,6 +231,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             action,
             path: file.path,
             name: file.name,
+            timeout: (settings?.execTimeoutSeconds ?? 300) * 1000,
           }),
         });
         result = await res.json();

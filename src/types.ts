@@ -108,6 +108,7 @@ export interface AppSettings {
   compactMode: boolean;
   downloadCommand?: string;
   watchCommand?: string;
+  execTimeoutSeconds?: number;
   movieDirectories?: string[];
   tvShowDirectories?: string[];
 }

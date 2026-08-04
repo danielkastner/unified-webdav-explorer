@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   compactMode: false,
   downloadCommand: 'curl -s -L -o "{LOCAL_PATH}" "{URL}"',
   watchCommand: 'vlc "{URL}" --title "{TITLE}"',
+  execTimeoutSeconds: 300,
   movieDirectories: ['/Movies'],
   tvShowDirectories: ['/TV-Shows'],
 };
