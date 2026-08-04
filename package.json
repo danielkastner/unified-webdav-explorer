@@ -3,6 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "description": "Material Design 3 WebDAV Desktop Explorer",
+  "author": {
+    "name": "Daniel Kastner & Google AI Studio",
+    "email": "daniel@daniel-kastner.ch"
+  },
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -18,7 +22,7 @@
     "lint": "tsc --noEmit"
   },
   "build": {
-    "appId": "com.webdav.unifiedclient",
+    "appId": "ch.daniel-kastner.unified-webdav-explorer",
     "productName": "Unified WebDAV Explorer",
     "directories": {
       "output": "dist-electron"
