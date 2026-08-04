@@ -464,34 +464,69 @@ export function unifyEndpointFiles(
 export function parseMediaInfoFromFileName(name: string, path: string): MediaInfo | undefined {
   if (!name || name.startsWith('.')) return undefined;
 
-  // Look for year e.g. 19xx or 20xx
-  const yearMatch = name.match(/[\s._(](19\d\d|20\d\d)[\s._)]/);
-  // Look for rating e.g. 8.8, 7.5, 9.0
+  const parsed = parseMovieTitleAndYear(name);
   const ratingMatch = name.match(/[\s._\[]([0-9]\.[0-9])[\s._\]]/) || name.match(/([0-9]\.[0-9])\s*\/\s*10/);
 
-  if (yearMatch) {
-    const year = yearMatch[1];
-    const yearIndex = name.indexOf(yearMatch[0]);
-    let rawTitle = name.substring(0, yearIndex).replace(/[._]/g, ' ').trim();
-    if (rawTitle.startsWith('(') && rawTitle.endsWith(')')) rawTitle = rawTitle.slice(1, -1);
-
-    if (rawTitle.length > 0) {
-      return {
-        title: rawTitle,
-        year: year,
-        rating: ratingMatch ? `${ratingMatch[1]}/10` : undefined,
-      };
-    }
+  if (parsed.cleanTitle || parsed.year) {
+    return {
+      title: parsed.cleanTitle,
+      year: parsed.year,
+      rating: ratingMatch ? `${ratingMatch[1]}/10` : undefined,
+    };
   }
 
   return undefined;
 }
 
 export function formatMediaInfo(file: WebDavFile): string {
+  const parts: string[] = [];
+
+  // 1. Priority: Retrieved TMDB Metadata (tmdbData)
+  if (file.tmdbData) {
+    const title = file.tmdbData.title;
+    const year = file.tmdbData.release_date
+      ? file.tmdbData.release_date.slice(0, 4)
+      : (file.mediaInfo?.year || parseMovieTitleAndYear(file.name).year);
+
+    if (title) {
+      if (year) {
+        parts.push(`${title} (${year})`);
+      } else {
+        parts.push(title);
+      }
+    } else if (year) {
+      parts.push(`Year: ${year}`);
+    }
+
+    if (file.tmdbData.vote_average !== undefined && file.tmdbData.vote_average !== null && file.tmdbData.vote_average > 0) {
+      const voteNum = Number(file.tmdbData.vote_average);
+      const voteStr = !isNaN(voteNum) ? voteNum.toFixed(1) : String(file.tmdbData.vote_average);
+      parts.push(`★ ${voteStr}/10`);
+    }
+
+    if (file.tmdbData.runtime) {
+      const rt = file.tmdbData.runtime;
+      const rtStr = typeof rt === 'number' ? `${rt} min` : (String(rt).includes('min') ? String(rt) : `${rt} min`);
+      parts.push(rtStr);
+    }
+
+    if (Array.isArray(file.tmdbData.genres) && file.tmdbData.genres.length > 0) {
+      const genreNames = file.tmdbData.genres
+        .map((g: any) => (typeof g === 'string' ? g : g?.name))
+        .filter(Boolean);
+      if (genreNames.length > 0) {
+        parts.push(genreNames.join(', '));
+      }
+    }
+
+    if (parts.length > 0) {
+      return parts.join(' • ');
+    }
+  }
+
+  // 2. Fallback: file.mediaInfo or parseMediaInfoFromFileName
   const info = file.mediaInfo || parseMediaInfoFromFileName(file.name, file.path);
   if (!info) return '';
-
-  const parts: string[] = [];
 
   if (info.title) {
     if (info.year) {
@@ -505,6 +540,15 @@ export function formatMediaInfo(file: WebDavFile): string {
 
   if (info.rating) {
     parts.push(`Rating: ${info.rating}`);
+  }
+
+  if (info.runtime) {
+    const rtStr = typeof info.runtime === 'number' ? `${info.runtime} min` : (String(info.runtime).includes('min') ? String(info.runtime) : `${info.runtime} min`);
+    parts.push(rtStr);
+  }
+
+  if (info.genre) {
+    parts.push(info.genre);
   }
 
   if (info.extra) {

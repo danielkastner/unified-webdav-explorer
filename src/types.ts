@@ -34,6 +34,8 @@ export interface MediaInfo {
   title?: string;
   year?: number | string;
   rating?: string;
+  genre?: string;
+  runtime?: string | number;
   extra?: string;
 }
 
